@@ -121,7 +121,6 @@ class DataHammer(object):
         return DataHammer(data if not self.__nested else data[0] if data else data)
 
     def __getitem__(self, indices):
-        print("Getitem <%s>: %s" % (tname(indices), indices))
         if isinstance(indices, DataHammer):
             indices = indices.__data
         if isinstance(indices, (slice, int)):
@@ -139,7 +138,6 @@ class DataHammer(object):
                 raise TypeError("Invalid index types: " + ",".join(e.__name__ for e in types))
         else:
             raise TypeError("Invalid index type: " + tname(indices))
-        print("Returning: %s" % data)
         return DataHammer(data, _nested=self.__nested)
 
     def _ind(self, index):
