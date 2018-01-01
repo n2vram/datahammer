@@ -79,9 +79,9 @@ with the same schema.
 | ``data``           | This must be one of:                                           |
 |                    |                                                                |
 |                    | * A `list` of ITEMS.                                           |
-|                    | * A single ITEM, a special case of the `list` of ITEMS.        |
+|                    | * A single, non-`list` ITEM.                                   |
 |                    |                                                                |
-|                    | If the **json** value true, then `data` can be either of:      |
+|                    | If the **json** value is true, then `data` can be either of:   |
 |                    |                                                                |
 |                    | * A `file` object, from which *all* data is read, and the      |
 |                    |   results are treated as TEXT, or...                           |
@@ -100,64 +100,64 @@ Operations
 
 This is a list of supported operations, including applying builtin Python functions. (`Note 1`_)
 
-+---------------------------------------+---------------------------------------------------------------+
-|             **Operation**             |     **Description**                                           |
-+=======================================+===============================================================+
-| ``~OBJ``                              | Returns the contained data.                                   |
-+---------------------------------------+---------------------------------------------------------------+
-| ``OBJ.index``                         | Creates a list by applying the *index* (an *int* for *list*   |
-|                                       | items a key for *dict* items, or the name of an *attribute*   |
-| ``OBJ._ind(index)``                   | or *property*), then creates an instance from that list.      |
-|                                       |                                                               |
-| ``OBJ._get(index)``                   | (`Note 2`_)                                                   |
-+---------------------------------------+---------------------------------------------------------------+
-| ``OBJ`` *op* ``OTHER``                | Return a *DataHammer* instance with a bool result from the    |
-|                                       | comparison of each ITEM with OTHER.  (`Note 3`_)              |
-| *op* can be:   ``< <= == != >= >``    |                                                               |
-|                                       | To test equality of contents, use: *~OBJ == OTHER*            |
-+---------------------------------------+---------------------------------------------------------------+
-| ``OBJ`` *bitop* ``OTHER``             | Return a *DataHammer* instance with the results of applying   |
-|                                       | `and`, `or` and a "bool-xor" to each *ITEM* and *OTHER*, or   |
-| ``OTHER`` *bitop* ``OBJ``             | (*OTHER* and *ITEM*).  These are needed since those keywords  |
-|                                       | cannot be overridden in the desired fashion.                  |
-| *bitop* can be:  ``& ^ |``            | (`Note 4`_)                                                   |
-+---------------------------------------+---------------------------------------------------------------+
-| ``OBJ`` *mathop* ``OTHER``            | Return a *DataHammer* instance with the results of applying   |
-|                                       | a math operators as: *OTHER mathop ITEM*.  (`Note 3`_)        |
-| *mathop* can be:  ``+ - * / // ** %`` |                                                               |
-+---------------------------------------+---------------------------------------------------------------+
-| ``OTHER`` *mathop* ``OBJ``            | Return a *DataHammer* instance with the results of applying   |
-|                                       | a math operators as: *OTHER mathop ITEM*.  (`Note 3`_)        |
-| ``*mathop* can be:  + - * / // ** %`` |                                                               |
-+---------------------------------------+---------------------------------------------------------------+
-| ``OBJ[indexes]``                      | Depending on the argument, returns a *DataHammer* instance, a |
-|                                       | single contained ITEM, or a list of ITEMs.                    |
-|                                       | See `Indexing`_ and `Note 4`_, for more information.          |
-+---------------------------------------+---------------------------------------------------------------+
-| ``OBJ._bool()``                       | Return a *DataHammer* instance with the results of applying   |
-| ``OBJ._int()``                        | the builtin type (*of the same name w/o the underscore*) to   |
-| ``OBJ._float()``                      | each item in the list.                                        |
-| ``OBJ._long()``                       | *(Use of 'long' is only allowed for Python 2)*                |
-+---------------------------------------+---------------------------------------------------------------+
-| ``reversed(OBJ)``                     | Return a *DataHammer* instance with the contained data in     |
-|                                       | reversed order.                                               |
-+---------------------------------------+---------------------------------------------------------------+
-| ``len(OBJ)``                          | Return an *int* for the number of contained data ITEMs.       |
-+---------------------------------------+---------------------------------------------------------------+
-| ``hash(OBJ)``                         | Return an *int* that is the hash of the tuple of the hash of  |
-|                                       | every ITEM.                                                   |
-|                                       | This will raise an exception if *any* ITEM cannot be hashed.  |
-+---------------------------------------+---------------------------------------------------------------+
-| ``ARG in OBJ``                        | Return a bool, which is `True` if any *ITEM == OBJ*.          |
-|                                       | (`Note 3`_ applies with regard to limiting the items tested.) |
-+---------------------------------------+---------------------------------------------------------------+
-| ``OBJ in ARG``                        | *This is almost never what you want!*  Return a single bool,  |
-|                                       | ignoring of contents of ARG or OBJ.  The result is `True` if  |
-|                                       | neither ARG nor OBJ are empty, and `False` if they both are.  |
-+---------------------------------------+---------------------------------------------------------------+
-| ``-OBJ``    *(unary minus)*           | Return a *DataHammer* instance with the results of applying   |
-|                                       | *not ITEM* on each item.                                      |
-+---------------------------------------+---------------------------------------------------------------+
++------------------------------------------+---------------------------------------------------------------+
+|             **Operation**                |     **Description**                                           |
++==========================================+===============================================================+
+| ``~OBJ``                                 | Returns the contained data.                                   |
++------------------------------------------+---------------------------------------------------------------+
+| | ``OBJ.index``                          | Creates a list by applying the *index* (an *int* for *list*   |
+| | ``OBJ._ind(index)``                    | items, a key for *dict* items, or the name of an *attribute*  |
+| | ``OBJ._get(index)``                    | or *property*), returning a *DataHammer* instance created     |
+|                                          | using that list.                                              |
+|                                          | (`Note 2`_)                                                   |
++------------------------------------------+---------------------------------------------------------------+
+| | ``OBJ`` *op* ``OTHER``                 | Return a *DataHammer* instance with a bool result from the    |
+| |  *op* can be: ``< <= == != >= >``      | comparison of each ITEM with OTHER.  (`Note 3`_)              |
+|                                          |                                                               |
+|                                          | To test equality of contents, use: *~OBJ == OTHER*            |
++------------------------------------------+---------------------------------------------------------------+
+| | ``OBJ`` *bitop* ``OTHER``              | Return a *DataHammer* instance with the results of applying   |
+| | ``OTHER`` *bitop* ``OBJ``              | `and`, `or` and a "bool-xor" to each *ITEM* and *OTHER*, or   |
+| |  *bitop* can be: ``& ^ |``             | (*OTHER* and *ITEM*).  These are needed since those keywords  |
+|                                          | cannot be overridden in the desired fashion.                  |
+|                                          | (`Note 4`_)                                                   |
++------------------------------------------+---------------------------------------------------------------+
+| | ``OBJ`` *mathop* ``OTHER``             | Return a *DataHammer* instance with the results of applying   |
+| |  *mathop* can be: ``+ - * / // ** %``  | a math operators in: *ITEM mathop OTHER*.  (`Note 3`_)        |
+|                                          |                                                               |
++------------------------------------------+---------------------------------------------------------------+
+| | ``OTHER`` *mathop* ``OBJ``             | Return a *DataHammer* instance with the results of applying   |
+| |  *mathop* can be: ``+ - * / // ** %``  | a math operators in: *OTHER mathop ITEM*.  (`Note 3`_)        |
+|                                          |                                                               |
++------------------------------------------+---------------------------------------------------------------+
+| ``OBJ[indexes]``                         | Depending on the argument, returns a *DataHammer* instance, a |
+|                                          | single contained ITEM, or a list of ITEMs.                    |
+|                                          | See `Indexing`_ and `Note 4`_, for more information.          |
++------------------------------------------+---------------------------------------------------------------+
+| | ``OBJ._bool()``                        | Return a *DataHammer* instance with the results of applying   |
+| | ``OBJ._int()``                         | the builtin type (*of the same name w/o the underscore*) to   |
+| | ``OBJ._float()``                       | each item in the list.                                        |
+| | ``OBJ._long()``                        | *(Use of 'long' is only allowed for Python 2)*                |
++------------------------------------------+---------------------------------------------------------------+
+| ``reversed(OBJ)``                        | Return a *DataHammer* instance with the contained data in     |
+|                                          | reversed order.                                               |
++------------------------------------------+---------------------------------------------------------------+
+| ``len(OBJ)``                             | Return an *int* for the number of contained data ITEMs.       |
++------------------------------------------+---------------------------------------------------------------+
+| ``hash(OBJ)``                            | Return an *int* that is the hash of the tuple of the hash of  |
+|                                          | every ITEM.                                                   |
+|                                          | This will raise an exception if *any* ITEM cannot be hashed.  |
++------------------------------------------+---------------------------------------------------------------+
+| ``ARG in OBJ``                           | Return a bool, which is `True` if any *ITEM == OBJ*.          |
+|                                          | (`Note 3`_ applies with regard to limiting the items tested.) |
++------------------------------------------+---------------------------------------------------------------+
+| ``OBJ in ARG``                           | *This is almost never what you want!*  Return a single bool,  |
+|                                          | ignoring of contents of ARG or OBJ.  The result is `True` if  |
+|                                          | neither ARG nor OBJ are empty, and `False` if they both are.  |
++------------------------------------------+---------------------------------------------------------------+
+| ``-OBJ``    *(unary minus)*              | Return a *DataHammer* instance with the results of applying   |
+|                                          | *not ITEM* on each item.                                      |
++------------------------------------------+---------------------------------------------------------------+
 
 
 Functions
@@ -168,9 +168,8 @@ This is a list of supported functions (`Note 1`_).
 +------------------------------------------+---------------------------------------------------------------+
 |            **Function**                  |     **Description**                                           |
 +==========================================+===============================================================+
-| ``OBJ._ind(name)``                       | (`Note 2`_)                                                   |
-|                                          |                                                               |
-| ``OBJ._get(name)``                       |                                                               |
+| | ``OBJ._ind(name)``                     | (`Note 2`_)                                                   |
+| | ``OBJ._get(name)``                     |                                                               |
 +------------------------------------------+---------------------------------------------------------------+
 | ``str(OBJ)``                             | Returns a JSON dump of the contained data.                    |
 +------------------------------------------+---------------------------------------------------------------+
@@ -209,8 +208,8 @@ Indexing
 Indexing a *DataHammer* instance with *[]* allows simple access to items from the contained data, but
 there are various types of parameters types allowed.  See `Note 4`_.
 
-1. Indexing with an **int** or a **slice** object works identical to a **list**, and is literally
-   identical to **(~OBJ)[...]**.
+1. Indexing with an **int** or an implicit or explicit **slice** object works like indexing **list**; the
+   result is identical to **(~OBJ)[...]**.
 
    * A single item is returned with an **int** argument, and can raise an IndexError.
    * A (possibly empty) list of items is returned with either:
@@ -265,38 +264,38 @@ Here **MUT** is used as a shorthand for **OBJ._mutator()** - which returns a *Da
 instance, and the name *Mutator* is also used for *DataHammer.Mutator*.
 
 
-+---------------------------------------+---------------------------------------------------------------+
-|    **Functions and Operation**        |     **Description**                                           |
-+=======================================+===============================================================+
-| ``MUT = OBJ._mutator()``              | Returns a new *Mutator* for the given *DataHammer* instance.  |
-+---------------------------------------+---------------------------------------------------------------+
-| ``~MUT``                              | Returns the *DataHammer* instance for this *Mutator*.         |
-+---------------------------------------+---------------------------------------------------------------+
-| ``MUT.index``                         | Returns a new *Mutator* instance useful for modifying the     |
-|                                       | key, attribute or list item at *index*.  (`Note 7`_).         |
-| ``MUT[index]``                        |                                                               |
-|                                       | Note that *all of these forms work identically*, though the   |
-| ``MUT._get(index)``                   | first form can only be used with valid identifier names. This |
-|                                       | is in contrast with **[]** on a *DataHammer* instance where   |
-| ``MUT._ind(index)``                   | it returns an item from the contained data.                   |
-+---------------------------------------+---------------------------------------------------------------+
-| ``MUT`` *op* ``OTHER``                | Update the item member for the given *Mutator* instance, with |
-|                                       | the given operation, which should be number (or object that   |
-| *op* can be: ``+= -= *= /= **= //=``  | supports that operation).                                     |
-+---------------------------------------+---------------------------------------------------------------+
-| ``MUT._set(OTHER)``                   | Update the value designated by the given *Mutator* instance,  |
-|                                       | overwriting with the given value(s).  If *OTHER* is a list,   |
-|                                       | tuple or *DataHammer* instance, then an interator is used,    |
-|                                       | and application stops when the end is reached. (`Note 3`_)    |
-+---------------------------------------+---------------------------------------------------------------+
-| ``MUT._setall(OTHER)``                | Like ``MUT._set(OTHER)`` but regardless of the type, *OTHER*  |
-|                                       | is used without iterating.  Used to set all rows to the same  |
-|                                       | *list* or *tuple* value, but can be used with any value/type. |
-+---------------------------------------+---------------------------------------------------------------+
-| ``MUT._apply(FUNC, *ARGS, **KWDS)``   | Update the value designated by the given *Mutator* instance,  |
-|                                       | overwriting with the the *return value* from calling:         |
-|                                       | **``FUNC(VALUE, *ARGS, **KWDS)``**.                           |
-+---------------------------------------+---------------------------------------------------------------+
++-----------------------------------------+----------------------------------------------------------------+
+|    **Functions and Operation**          |     **Description**                                            |
++=========================================+================================================================+
+| ``MUT = OBJ._mutator()``                | Returns a new *Mutator* for the given *DataHammer* instance.   |
++-----------------------------------------+----------------------------------------------------------------+
+| ``~MUT``                                | Returns the *DataHammer* instance for this *Mutator*.          |
++-----------------------------------------+----------------------------------------------------------------+
+| | ``MUT.index``                         | Returns a new *Mutator* instance useful for modifying the      |
+| | ``MUT[index]``                        | key, attribute or list item at *index*.  (`Note 7`_).          |
+| | ``MUT._get(index)``                   |                                                                |
+| | ``MUT._ind(index)``                   | Note that *all of these forms work identically*, though the    |
+|                                         | first form can only be used with valid identifier names. This  |
+|                                         | is in contrast with **[]** on a *DataHammer* instance where    |
+|                                         | it returns an item from the contained data.                    |
++-----------------------------------------+----------------------------------------------------------------+
+| | ``MUT`` *op* ``OTHER``                | Update the item member for the given *Mutator* instance, with  |
+| |  *op* can be: ``+= -= *= /= **= //=`` | the given operation, which should be number (or object that    |
+|                                         | supports that operation).                                      |
++-----------------------------------------+----------------------------------------------------------------+
+| ``MUT._set(OTHER)``                     | Update the value designated by the given *Mutator* instance,   |
+|                                         | overwriting with the given value(s).  If *OTHER* is a list,    |
+|                                         | tuple or *DataHammer* instance, then an interator is used,     |
+|                                         | and application stops when the end is reached. (`Note 3`_)     |
++-----------------------------------------+----------------------------------------------------------------+
+| ``MUT._setall(OTHER)``                  | Like ``MUT._set(OTHER)`` but regardless of the type, *OTHER*   |
+|                                         | is used without iterating.  Used to set all rows to the same   |
+|                                         | *list* or *tuple* value, but can be used with any value/type.  |
++-----------------------------------------+----------------------------------------------------------------+
+| ``MUT._apply(FUNC, *ARGS, **KWDS)``     | Update the value designated by the given *Mutator* instance,   |
+|                                         | overwriting with the the *return value* from calling:          |
+|                                         | **``FUNC(VALUE, *ARGS, **KWDS)``**.                            |
++-----------------------------------------+----------------------------------------------------------------+
 
 Notes
 -----

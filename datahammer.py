@@ -1,13 +1,17 @@
 # ======================================================================
 #
-# Copyright (c) 2017-2018 NVRAM@sf.net
+# Copyright (c) 2017-2018 NVRAM <nvram@users.sourceforge.net>
 #
 # Released under the MIT License (https://opensource.org/licenses/MIT)
 #
 # ======================================================================
 """pyquery - a Python Query container.
 
-This module provides DataHammer
+This module provides an easy way to manipulate and inspect lists of
+data.  It was designed to handle plain data types, especially the
+output from parsing JSON.  It allows simple operations to be done on
+the items in parallel in a concise fashion.  Many features will also
+work on other data types.
 """
 import json
 import operator
