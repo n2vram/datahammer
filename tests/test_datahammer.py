@@ -1164,12 +1164,18 @@ class TestDataHammer(object):
         magic._mutate().k.z.extra._set(1234)
         assert data == ~magic
 
-        # List modification, using the same list on all items.
-        value = [1, None, "text"]
-        magic._mutate().k.new._set([value])
+        # Using "_set(list)" iterates over the list, but "_setall(list)" does not.
+        val1 = [1, None, "text"]
+        val2 = [2, "other"]
         for item in data:
-            item['k'].new = list(value)
-        dump('magic + k.new', magic)
+            item['k'].new1 = list(val1)
+        for nth, item in enumerate(val2):
+            data[nth]['k'].new2 = item
+
+        magic._mutate().k.new1._setall(val1)
+        magic._mutate().k.new2._set(val2)
+        for num, item in enumerate(~magic):
+            dump(('item.%d' % num), item, ('data.%d' % num), data[num])
         assert data == ~magic
 
     def test_mutator_attr(self):
@@ -1236,3 +1242,24 @@ class TestDataHammer(object):
         # This fails currently, known bug...
         assert str(mod2) == "[Mutator([(0, 'c'), (0, 'x'), (1, 100)])]"
         assert str(mod) == "[Mutator([(0, 'c'), (0, 'x')])]"
+
+    def test_mutator_apply(self):
+        data = [dict(c=[Obj(x=i), Obj(y=i * 2)],
+                     k=Obj(a=i, b=i * 2)) for i in (3, 5, 7)]
+        dump('data', data)
+        magic = DataHammer(data)
+
+        def incr(obj, name, num=1):
+            dump('OBJ', obj, 'num', num)
+            setattr(obj, name, getattr(obj, name) + num)
+            return obj
+
+        magic._mutate().c[0]._apply(incr, 'x', num=2)
+        magic._mutate().c[1]._apply(incr, 'y', num=5)
+        dump('magic', magic, 'data', data)
+
+        for item in data:
+            item['c'][0].x += 2
+            item['c'][1].y += 5
+
+        assert data == ~magic

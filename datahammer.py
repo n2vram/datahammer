@@ -9,7 +9,6 @@
 
 This module provides DataHammer
 """
-import itertools
 import json
 import operator
 
@@ -406,13 +405,18 @@ class DataHammer(object):
         def _attr(self, name):
             return self.__clone(0, name)
 
-        def _set(self, val):
-            if hasattr(val, '__getitem__') and not isinstance(val, type(DataHammer)):
-                source = iter(val)
-            else:
-                source = itertools.repeat(val)
+        def _setall(self, val):
             # Only for setting/overwriting does the item not have to exist.
+            return self.__handle(lambda *_: val, overwrite=True)
+
+        def _set(self, val):
+            if isinstance(val, type(DataHammer)) or not hasattr(val, '__getitem__'):
+                return self._setall(val)
+            source = iter(val)
             return self.__handle(lambda *_: next(source), overwrite=True)
+
+        def _apply(self, func, *args, **kwds):
+            return self.__handle(func, True, *args, **kwds)
 
         def __invert__(self):
             return ~self.__mdata
@@ -440,10 +444,9 @@ class DataHammer(object):
         def __ifloordiv__(self, value):
             return self.__handle(operator.floordiv, False, value)
 
-        def __handle(self, modop, overwrite, *args):
+        def __handle(self, modop, overwrite, *args, **kwds):
             assert self.__keys, "Modification of root items is not supported."
             target = ~self.__mdata
-            print("__handle.%s{%s}(%s, %s)" % (self.__keys, modop.__name__, overwrite, args))
 
             for nth, item in enumerate(target):
                 try:
@@ -457,13 +460,11 @@ class DataHammer(object):
                     if overwrite or value is not NO_ARG:
 
                         if ndx or (hasattr(item, 'get') and (key in item or overwrite)):
-                            value = modop(value, *args)
-                            print("Setting item[%s](%d) to <%s> %s" % (key, len(item), tname(value), value))
+                            value = modop(value, *args, **kwds)
                             item[key] = value
 
                         elif isinstance(key, string_types) and hasattr(item, '__dict__' if overwrite else key):
-                            value = modop(value, *args)
-                            print("Setting item.%s to <%s> %s" % (key, tname(value), value))
+                            value = modop(value, *args, **kwds)
                             setattr(item, key, value)
 
                 except StopIteration:

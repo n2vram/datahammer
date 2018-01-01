@@ -6,29 +6,30 @@ datahammer
 **Index:**
 
 * `Summary`_
-* `Details`_ (`Known Issues`_, `Construction`_, `Operations`_, `Functions`_, `Indexing`_, `Notes`_)
+* `Details`_ (`Known Issues`_, `Construction`_, `Operations`_, `Functions`_, `Indexing`_)
+* `Notes`_
 * `Installation`_ (`Releases`_)
 * `Examples`_
 
 Summary
 ------------------
 
-This module provides an easy way to filter, inspect, analayze and manipulate many similar data items.
-It was designed to handle plain data types, especially the output from parsing JSON.  It is designed to
-allows operations to be done a concise fashion, and on all items in a simple parallel manner.
+This module provides an easy way to filter, inspect, analyze and manipulate many similar data items.  It was
+designed to handle plain data types, especially the output from parsing JSON.  It is designed to allow
+operations to be done a concise fashion, and on all items in a simple parallel manner.
 
 It mostly works on other data types, for either data as attributes, properties or with *[]*.
 
 By design, concise usages was favored over speed of performance.  It was inspired by a need for a
-concise data manipulation syntax and by the projects `jQuery <https://jquery.com/>`_ and `jq
-<https://stedolan.github.io/sjq/>`_.
+concise data manipulation syntax and by the projects `jQuery <https://jquery.com/>`_ and
+`jq <https://stedolan.github.io/sjq/>`_.
 
 
 Details
 -------
 
 - Most operations on a *DataHammer* instance return a value or a new instance, they do not mutate the
-  contained data.  Note that a returned ITEM could be mutated by the calling code.
+  contained data, although a returned ITEM could be mutated by the calling code.
 
 - The contained data can be retrieved with the invert operator (**~**).  It will be a **list**
   unless constructed with a single ITEM, in which case that ITEM will be returned.
@@ -36,22 +37,21 @@ Details
 - In order to allow accessing arbitrary ITEM attributes uses the dot notation, **public functions start
   with a single underscore**, in contrast to typical Python conventions.  See `Functions`_.
 
-- It uses a **list** as its top-level container, and will convert a **tuple** or most generators into a
+- It uses a **list** as its top-level container, and will convert a **tuple** and some generators into a
   **list**.
 
 - When constructed with a single ITEM, that item will be wrapped in a **list** and *most* operations will
   be identitical to having been constructed with a list with that single ITEM.
 
-- It uses '.' access of  *dict* members and for attributes, the response is typically **None** if there
-  is no such key or attribute (no *KeyError* or *AttributeError* is raised).
+- It uses '.' to access *dict* members or object attributes, using **None** for items where there is no key or
+  attribute with the specified name, thus no *KeyError* or *AttributeError* will be raised.
 
-- Math and comparison operators work on the contained items, and return a new container with the
-  results.
+- Almost all operations will silently ignore items that do not have a member with the "intended" key, attribute
+  or index.
 
-- There is a **Mutator** class returned by the **_mutator()** function that allow modifying the data
-  in-place for some, but not all, of the
+- There is a **Mutator** class returned by the **_mutator()** function that is designed to allow modifying the
+  data in-place for some of the
   `Augmented Assignment statements <https://docs.python.org/3/reference/simple_stmts.html#grammar-token-augmented_assignment_stmt>`_.
-
 
 Known Issues
 ^^^^^^^^^^^^
@@ -60,7 +60,7 @@ Known Issues
   containers (`Note 6`_).
 
 - By design and intent, the bitwise operators (`&`, `|`, `^`) actually create a new instance by applying
-  the `and`, `or` and `xor` operators, respectively.  This is because theose operators cannot be
+  the `and`, `or` and `xor` operators, respectively.  This is because those keyword operators cannot be
   overridden to return an object as we wish.
 
 - There are missing operators that could be added. Among these are **del** (attribute or key),
@@ -70,12 +70,12 @@ Known Issues
 Construction
 ^^^^^^^^^^^^
 
-Creating a *DataHammer* can take several types of input.  However, in all cases the operations are as if
-it contains a **list** of items, presumably with a similar schema.
+Creating a *DataHammer* can take several sources for its input.  It is designed for use on a **list** of items
+with the same schema.
 
 +--------------------+----------------------------------------------------------------+
 |  **Parameters**    |     **Description**                                            |
-+--------------------+----------------------------------------------------------------+
++====================+================================================================+
 | ``data``           | This must be one of:                                           |
 |                    |                                                                |
 |                    | * A `list` of ITEMS.                                           |
@@ -87,7 +87,7 @@ it contains a **list** of items, presumably with a similar schema.
 |                    |   results are treated as TEXT, or...                           |
 |                    | * TEXT to be parsed as JSON.                                   |
 +--------------------+----------------------------------------------------------------+
-| ``copy``           | If true, then a `deepcopy` will be made of `data`.             |
+| ``copy``           | If given and true, then a `deepcopy` will be made of `data`.   |
 +--------------------+----------------------------------------------------------------+
 | ``json``           | If provided, it should either be `True` or a dict of arguments |
 |                    | to be passed to *JSON.loads()* for when `data` is of either    |
@@ -102,7 +102,7 @@ This is a list of supported operations, including applying builtin Python functi
 
 +---------------------------------------+---------------------------------------------------------------+
 |             **Operation**             |     **Description**                                           |
-+---------------------------------------+---------------------------------------------------------------+
++=======================================+===============================================================+
 | ``~OBJ``                              | Returns the contained data.                                   |
 +---------------------------------------+---------------------------------------------------------------+
 | ``OBJ.index``                         | Creates a list by applying the *index* (an *int* for *list*   |
@@ -156,7 +156,7 @@ This is a list of supported operations, including applying builtin Python functi
 |                                       | neither ARG nor OBJ are empty, and `False` if they both are.  |
 +---------------------------------------+---------------------------------------------------------------+
 | ``-OBJ``    *(unary minus)*           | Return a *DataHammer* instance with the results of applying   |
-|                                       | *not ITEM* for each item.                                     |
+|                                       | *not ITEM* on each item.                                      |
 +---------------------------------------+---------------------------------------------------------------+
 
 
@@ -167,7 +167,7 @@ This is a list of supported functions (`Note 1`_).
 
 +------------------------------------------+---------------------------------------------------------------+
 |            **Function**                  |     **Description**                                           |
-+------------------------------------------+---------------------------------------------------------------+
++==========================================+===============================================================+
 | ``OBJ._ind(name)``                       | (`Note 2`_)                                                   |
 |                                          |                                                               |
 | ``OBJ._get(name)``                       |                                                               |
@@ -198,6 +198,9 @@ This is a list of supported functions (`Note 1`_).
 | ``OBJ._slice(START [, END [, STEP ] ])`` | Return a *DataHammer* instance with the list sliced according |
 |                                          | to the given indices (like *list* slicing works).             |
 +------------------------------------------+---------------------------------------------------------------+
+| ``OBJ._mutator()``                       | Returns a *DataHammer.Mutator* instance to be used for making |
+|                                          | modifications to the contained data.  See `Mutators`_.        |
++------------------------------------------+---------------------------------------------------------------+
 
 
 Indexing
@@ -214,7 +217,7 @@ there are various types of parameters types allowed.  See `Note 4`_.
 
      * An explicit **slice** argument, eg:   OBJ[slice(1, None, 5)]
      * An implicit **slice** argument, eg:   OBJ[1::5]
-   
+
 2. Indexing with a **list**, **tuple** or a *DataHammer* instance, will return another *DataHammer*
    instance.  (See `Note 3`_.)  The parameter must either be all **bool** or all **int**, and they
    dictate *which* items are used to construct the new instance:
@@ -252,11 +255,54 @@ Indexing Examples:
         [10, 13]
 
 
+Mutators
+^^^^^^^^
+
+There is some support for making modifications to the data contained within a *DataHammer*, beyond
+direct access.  This is done with the *DataHammer._mutator* method on the instance.
+
+Here **MUT** is used as a shorthand for **OBJ._mutator()** - which returns a *DataHammer.Mutator*
+instance, and the name *Mutator* is also used for *DataHammer.Mutator*.
+
+
++---------------------------------------+---------------------------------------------------------------+
+|    **Functions and Operation**        |     **Description**                                           |
++=======================================+===============================================================+
+| ``MUT = OBJ._mutator()``              | Returns a new *Mutator* for the given *DataHammer* instance.  |
++---------------------------------------+---------------------------------------------------------------+
+| ``~MUT``                              | Returns the *DataHammer* instance for this *Mutator*.         |
++---------------------------------------+---------------------------------------------------------------+
+| ``MUT.index``                         | Returns a new *Mutator* instance useful for modifying the     |
+|                                       | key, attribute or list item at *index*.  (`Note 7`_).         |
+| ``MUT[index]``                        |                                                               |
+|                                       | Note that *all of these forms work identically*, though the   |
+| ``MUT._get(index)``                   | first form can only be used with valid identifier names. This |
+|                                       | is in contrast with **[]** on a *DataHammer* instance where   |
+| ``MUT._ind(index)``                   | it returns an item from the contained data.                   |
++---------------------------------------+---------------------------------------------------------------+
+| ``MUT`` *op* ``OTHER``                | Update the item member for the given *Mutator* instance, with |
+|                                       | the given operation, which should be number (or object that   |
+| *op* can be: ``+= -= *= /= **= //=``  | supports that operation).                                     |
++---------------------------------------+---------------------------------------------------------------+
+| ``MUT._set(OTHER)``                   | Update the value designated by the given *Mutator* instance,  |
+|                                       | overwriting with the given value(s).  If *OTHER* is a list,   |
+|                                       | tuple or *DataHammer* instance, then an interator is used,    |
+|                                       | and application stops when the end is reached. (`Note 3`_)    |
++---------------------------------------+---------------------------------------------------------------+
+| ``MUT._setall(OTHER)``                | Like ``MUT._set(OTHER)`` but regardless of the type, *OTHER*  |
+|                                       | is used without iterating.  Used to set all rows to the same  |
+|                                       | *list* or *tuple* value, but can be used with any value/type. |
++---------------------------------------+---------------------------------------------------------------+
+| ``MUT._apply(FUNC, *ARGS, **KWDS)``   | Update the value designated by the given *Mutator* instance,  |
+|                                       | overwriting with the the *return value* from calling:         |
+|                                       | **``FUNC(VALUE, *ARGS, **KWDS)``**.                           |
++---------------------------------------+---------------------------------------------------------------+
+
 Notes
-^^^^^
+-----
 
 Note 1
-""""""
+^^^^^^
 
 In these examples, *OBJ* refers to a *DataHammer* instance, *LIST* refers to the list of
 contained items, and *ITEM* refers to an item in the contained list or directly in the
@@ -264,7 +310,7 @@ contained items, and *ITEM* refers to an item in the contained list or directly 
 
 
 Note 2
-""""""
+^^^^^^
 
 An attribute dereference (eg: *OBJ.index*) and the methods *OBJ._ind(index)* and *OBJ._get(index)* all
 function identically, returning a new **DataHammer** instance.  The latter are provided for use when
@@ -272,7 +318,7 @@ function identically, returning a new **DataHammer** instance.  The latter are p
 
 
 Note 3
-""""""
+^^^^^^
 
 For most operations and functions that return a new instance, when a *DataHammer* instance is combined
 with a list, tuple or other *DataHammer* instance, the length of the new instance will be limited by the
@@ -297,7 +343,7 @@ length of the shorter of the two operands.  For example:
 
 
 Note 4
-""""""
+^^^^^^
 
 Because the **[]** syntax is used for `Indexing`_ and returns an ITEM or list, we cannot use this syntax
 for chaining or to create another instance as we do for dotted-attribute access.  This is why there is a
@@ -329,7 +375,7 @@ for chaining or to create another instance as we do for dotted-attribute access.
 
 
 Note 5
-""""""
+^^^^^^
 
 This works similar to the *slice* method of the
 `Javascript Array <https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/slice>`_
@@ -337,7 +383,7 @@ class.
 
 
 Note 6
-""""""
+^^^^^^
 
 Using "*ITEM in OBJ*" returns True if ITEM matches one of the items in OBJ, using the operator **==**
 for the test.  However, using *OBJ in OTHER* for an iterable containers *OTHER*, is useless.
@@ -346,6 +392,14 @@ useless.
 Using "*OBJ in OTHER*" will evaluate the expression "**X == OBJ**" for each item X in OTHER,, resulting
 in a list of bool.  Unless either *OTHER* or *OBJ* are empty, this means a non-empty list will be
 converted to **True** even if all of the comparisons fail.
+
+
+Note 7
+^^^^^^
+
+*Mutator* operations dereference items based on the type of an item, regardless of the type of other items in
+the contained data.  Meaning: if a *DataHammer* with two items contains a `dict` with a key "foo" and an object
+with an attribute "foo", then using **OBJ._mutator().foo** will update differently.
 
 
 Installation
@@ -359,13 +413,17 @@ Or for a specific version:
   `sudo python3 -m pip install datahammer`
 
 
+To the source git repository, use:
+
+  `git clone https://github.com/n2vram/datahammer.git`
+
 
 Releases
 ^^^^^^^^
 
    +-------------+--------------------------------------------------------+
    | **Version** | **Description**                                        |
-   +-------------+--------------------------------------------------------+
+   +=============+========================================================+
    |      1.0    | Initial release                                        |
    +-------------+--------------------------------------------------------+
 
