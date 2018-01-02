@@ -1,0 +1,21 @@
+# Backups
+*~
+\#*
+*.rej
+*.orig
+*.save
+*.swp
+*.bak
+*.backup
+*.back
+
+# Compiled objects, IDE junk:
+.idea
+__pycache__
+*.pyc
+*.pyo
+.coverage
+.cache
+
+# MackOS crap.
+.DS_Store*
