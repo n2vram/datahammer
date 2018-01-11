@@ -7,6 +7,20 @@ import datahammer
 name = 'datahammer'
 url = 'https://github.com/n2vram/' + name
 
+hammer_classifiers = [
+    'Development Status :: 5 - Production/Stable',
+    'Intended Audience :: Developers',
+    'License :: OSI Approved :: MIT License',
+    'Operating System :: OS Independent',
+    'Programming Language :: Python',
+    'Programming Language :: Python :: 2.7',
+    'Programming Language :: Python :: 3',
+    'Topic :: Text Processing :: Filters',
+    'Topic :: Utilities',
+    'Topic :: Software Development :: Libraries :: Python Modules',
+]
+
+
 setup(
     name=name,
     version=datahammer.version,
@@ -16,21 +30,10 @@ setup(
     author='NVRAM',
     author_email='nvram@users.sourceforge.net',
     url=url,
-    classifiers=[
-        'Development Status :: 5 - Production/Stable',
-        'Intended Audience :: Developers',
-        'License :: OSI Approved :: MIT License',
-        'Operating System :: OS Independent',
-        'Programming Language :: Python',
-        'Programming Language :: Python :: 2.7',
-        'Programming Language :: Python :: 3',
-        'Topic :: Text Processing :: Filters',
-        'Topic :: Utilities',
-        'Topic :: Software Development :: Libraries :: Python Modules',
-    ],
-    keywords=['data', 'datasets', 'queries', 'JSON', 'resultsets',
-              'datahammer', 'hammer'],
+    classifiers=hammer_classifiers,
+    keywords=['data', 'datasets', 'queries', 'JSON', 'resultsets', 'datahammer', 'hammer'],
     py_modules=[name],
     download_url=(url + '/archive/' + datahammer.version),
+    install_requires=['six>=1.6.0'],
     platforms=['any'],
 )

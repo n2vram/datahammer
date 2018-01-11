@@ -5,7 +5,7 @@
 # Released under the MIT License (https://opensource.org/licenses/MIT)
 #
 # ======================================================================
-"""pyquery - a Python Query container.
+"""datahammer - a Python data container w/manipulator.
 
 This module provides an easy way to manipulate and inspect lists of
 data.  It was designed to handle plain data types, especially the
@@ -20,7 +20,7 @@ from copy import deepcopy, copy
 from six import string_types
 from types import GeneratorType
 
-version = '0.8'
+version = '0.9'
 description = (
     'This module provides an easy way to manipulate and inspect lists of'
     ' data.  It was designed to handle plain data types, especially '
