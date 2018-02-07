@@ -1003,6 +1003,25 @@ class TestDataHammer(object):
 
         assert hash((data, )) == hash(magic)
 
+    def test_pick1(self):
+        dd = lrange(-3, 8)
+        dh = DataHammer(dd)
+        knils = [dict(k1=None, k2=None, k3=None) for i in dd]
+        assert ~dh._pick('k1', 'x.y.k2', k3='foo.bar') == knils
+
+        # Only take the 'meta'...
+        dh = DataHammer(open_file('jobsdata.json'), json=True).meta
+        exp = {"Contact Email": "opendata@its.ny.gov", "Publisher": "State of New York", "Contact Name": "Open Data NY"}
+        res = dh.metadata.custom_fields._ind('Common Core')
+        assert ~res == exp
+
+        exp = dict(id='pxa9-czw8', tags=['job trends'], viewCount=44813,
+                   screenName='NY Open Data', col=276163358, foo=None, bar=None)
+        res = dh._pick('id', 'tags', 'viewCount', 'tableAuthor.screenName',
+                       col='query.orderBys.0.expression.columnId',
+                       foo='query.orderBys.200.foo', bar='query.bar.200.bar')
+        assert [exp] == ~res
+
     def test_array_mods(self):
         dd = lrange(-3, 8)
         mm = DataHammer(dd)

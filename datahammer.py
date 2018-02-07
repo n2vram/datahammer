@@ -39,10 +39,12 @@ def tname(obj):
 
 def _deref(obj, key, dflt):
     try:
-        if isinstance(obj, (list, tuple, dict)):
+        if isinstance(obj, dict):
             return obj[key]
+        elif isinstance(obj, (list, tuple)):
+            return obj[int(key)]
         return getattr(obj, key)
-    except (TypeError, KeyError, IndexError, AttributeError):
+    except (TypeError, KeyError, IndexError, AttributeError, ValueError):
         pass
     return dflt
 
@@ -381,6 +383,41 @@ class DataHammer(object):
         if self.__nested:
             raise AttributeError("Cannot _slice a non-list.")
         return DataHammer(self.__data[start:end:step])
+
+    def _pick(self, *names, **pairs):
+        # Function: OBJ._pick(CHOICES)
+        """Returns a new DataHammer instance with dictionaries with only the given names.
+        This is an easy way to retain/extract data items from the contained data.
+        Positional parameters are names, keyword parameters allow renaming.
+
+        For example:
+           OBJ._pick('age', 'x.bank', cost='y1.y2.price', dividend='z1.z2.payout')
+        Would return a new DataHammer instance where each contained datum has the keys:
+             "age", "bank", "cost" and "dividend"
+        With values from:   ITEM.age, ITEM.x.y.bank, ITEM.z.price, ITEM.
+
+        Note: this method handles support numerical indexing in choices with raw decimal. Eg:
+             age='x.3.age'  # The value for ITEM.x._ind(3).age
+
+        This object is not changed."""
+        data = []
+        for item in self.__data:
+            datum = {}
+            for key, name in tuple(zip(names, names)) + tuple(pairs.items()):
+                key = key.split('.')[-1]
+                datum[key] = self.__fetch(item, name)
+            data.append(datum)
+        return DataHammer(data)
+
+    @classmethod
+    def __fetch(cls, item, keys):
+        if isinstance(keys, STRING_TYPES):
+            keys = keys.split('.')
+        for key in keys:
+            if item is None:
+                break
+            item = _deref(item, key, None)
+        return item
 
     class Mutator(object):
         def __init__(self, mdata, _keys=None):

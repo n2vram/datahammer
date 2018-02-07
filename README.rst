@@ -1,7 +1,7 @@
 datahammer
 ##########
 
-`Version 0.9`
+`Version 0.9.1`
 
 "When all you have is a hammer, everything looks like a nail." - *Anonymous*
 
@@ -195,6 +195,19 @@ This is a list of supported functions. [1]_
 | ``OBJ._slice(START [, END [, STEP ] ])`` | Return a *DataHammer* instance with the list sliced according |
 |                                          | to the given indices (like *list* slicing works).             |
 +------------------------------------------+---------------------------------------------------------------+
+| ``OBJ._pick(SELECTOR, SELECTOR, ...)``   | Return a *DataHammer* instance with a *dict* created from one |
+|                                          | or more parts of the contained data picked by *str* given by  |
+|                                          | the *SELECTOR* , either positional named parameters.          |
+|                                          | Parameters indicate the key in the resulting item, and how to |
+|                                          | dereference the data from the contained items. The rules are: |
+|                                          | [8]_                                                          |
+|                                          |                                                               |
+|                                          | * Positional parameters are *str* used to dereference parts   |
+|                                          |   of contained items, with the text after the last "." used   |
+|                                          |   as the key in the resulting items.                          |
+|                                          | * Named parameters are similar, but allow renaming the data   |
+|                                          |   the resulting items.                                        |
++------------------------------------------+---------------------------------------------------------------+
 | ``OBJ._mutator()``                       | Returns a *DataHammer.Mutator* instance to be used for making |
 |                                          | modifications to the contained data.  See `Mutators`_.        |
 +------------------------------------------+---------------------------------------------------------------+
@@ -371,9 +384,9 @@ Releases
    +-------------+--------------------------------------------------------+
    | **Version** | **Description**                                        |
    +=============+========================================================+
-   | 0.9 - 0.9.1 | Initial release, documentation prototyping.            |
+   |     0.9     | Initial release, documentation prototyping.            |
    +-------------+--------------------------------------------------------+
-   |     1.0     | Initial stable release.                                |
+   |    0.9.1    | Addition of "_pick" method.                            |
    +-------------+--------------------------------------------------------+
 
 Foot Notes
@@ -471,3 +484,43 @@ converted to **True** even if all of the comparisons fail.
 the contained data.  Meaning: if a *DataHammer* with two items contains a `dict` with a key "foo" and an object
 with an attribute "foo", then using **OBJ._mutator().foo** will update differently.
 
+
+.. [8] The `_pick()` method.
+
+A *SELECTOR* must be a `str`, but can be named or positional.
+
+1. Resulting items are all `dict` instances.
+2. For named parameters, the name will be used for the key in the resulting items.
+3. For positional parameters, the text after the last dot, if any, is used for the resulting key.
+4. Recursive dereferences are allowed with a dot (`.`) separator between sub-keys.
+
+Caveats:
+
+5. If there are multiple parameters that result in the same key, the result is undefined.
+   Currently, positional parameters are processed in order before the named parameters,
+   but that is not guaranteed to be true in future releases.
+6. Currently, a bare int (in decimal form) is used to index into lists, but that syntax may
+   change and is not guaranteed to be true in future releases.
+
+Example:
+
+    .. code:: python
+
+        >>> dh = DataHammer([
+        ...   {"a": 100, "b": {"b1": [101, 102, 103], "b2": "ape"}, "c": ["Apple", "Anise"]},
+        ...   {"a": 200, "b": {"b1": [201, 202, 203], "b2": "bat"}, "c": ["Banana", "Basil"]},
+        ...   {"a": 300, "b": {"b1": [301, 302, 303], "b2": "cat"}, "c": ["Cherry", "Cayenne"]}
+        ... ])
+
+        >>> ~dh._pick('a', 'b.b1', animal='b.b2', food='c', nil='this.is.missing')
+        [{'a': 100, 'b1': [101, 102, 103], 'animal': 'ape', 'food': ['Apple', 'Anise'], 'nil': None},
+         {'a': 200, 'b1': [201, 202, 203], 'animal': 'bat', 'food': ['Banana', 'Basil'], 'nil': None},
+         {'a': 300, 'b1': [301, 302, 303], 'animal': 'cat', 'food': ['Cherry', 'Cayenne'], 'nil': None}]         
+
+        >>> ~dh._pick('b.b1', b1='c')
+        #### Result is undefined due to the key collision.
+
+        >>> ~dh._pick(animal='b.b2', fruit='c.0')   ## This '.0' syntax *might* change in future releases.
+        [{'animal': 'ape', 'fruit': 'Apple'},
+         {'animal': 'bat', 'fruit': 'Banana'},
+         {'animal': 'cat', 'fruit': 'Carmel'}]
