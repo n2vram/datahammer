@@ -1,5 +1,7 @@
 #!/bin/bash -ex
 
+cd "$(dirname "$0")"
+
 # From: 'pip install flake8'
 python2 -m flake8 $(find * -name '*.py')
 

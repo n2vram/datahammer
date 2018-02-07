@@ -15,12 +15,14 @@ work on other data types.
 """
 import json
 import operator
+import sys
 
 from copy import deepcopy, copy
-from six import string_types
 from types import GeneratorType
 
-version = '0.9'
+version = '0.9.1'
+STRING_TYPES = (basestring,) if sys.version_info[0] == 2 else (str,)
+
 description = (
     'This module provides an easy way to manipulate and inspect lists of'
     ' data.  It was designed to handle plain data types, especially '
@@ -60,7 +62,7 @@ class JEncoder(json.JSONEncoder):
     def jload(cls, arg, extra):
         if not isinstance(extra, dict):
             extra = {}
-        if isinstance(arg, string_types):
+        if isinstance(arg, STRING_TYPES):
             return json.loads(arg, **extra)
         if callable(getattr(arg, 'read', None)):
             return json.load(arg, **extra)
@@ -465,7 +467,7 @@ class DataHammer(object):
                             value = modop(value, *args, **kwds)
                             item[key] = value
 
-                        elif isinstance(key, string_types) and hasattr(item, '__dict__' if overwrite else key):
+                        elif isinstance(key, STRING_TYPES) and hasattr(item, '__dict__' if overwrite else key):
                             value = modop(value, *args, **kwds)
                             setattr(item, key, value)
 
