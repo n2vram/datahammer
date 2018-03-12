@@ -5,6 +5,7 @@ import json
 import logging
 import os
 import pytest
+import random
 import re
 import six
 import time
@@ -1009,9 +1010,13 @@ class TestDataHammer(object):
         knils = [dict(k1=None, k2=None, k3=None) for i in dd]
         assert ~dh._pick('k1', 'x.y.k2', k3='foo.bar') == knils
 
+    def test_pick2(self):
         # Only take the 'meta'...
         dh = DataHammer(open_file('jobsdata.json'), json=True).meta
-        exp = {"Contact Email": "opendata@its.ny.gov", "Publisher": "State of New York", "Contact Name": "Open Data NY"}
+        exp = {
+            "Contact Email": "opendata@its.ny.gov", "Publisher": "State of New York",
+            "Contact Name": "Open Data NY"
+        }
         res = dh.metadata.custom_fields._ind('Common Core')
         assert ~res == exp
 
@@ -1021,6 +1026,102 @@ class TestDataHammer(object):
                        col='query.orderBys.0.expression.columnId',
                        foo='query.orderBys.200.foo', bar='query.bar.200.bar')
         assert [exp] == ~res
+
+        # Validate that index integers used as keys are str.
+        res = dh._pick('query.orderBys.0')
+        print("Res: %s" % ~res)
+        print("Res: %s" % ~dh)
+        assert ["0"] == list(res[0].keys())
+
+    def test_toCSV(self):
+        data = [
+            dict(name=dict(first='Rex', last="O'herlihan", common='The Singing Cowboy'),
+                 office=dict(location='The Range', active=False),
+                 age=28),
+            dict(name=dict(first='Kermit the', last="Frog", common=None),
+                 office=dict(location='The Swamp', active=True),
+                 age=75),
+            dict(name=dict(first='Dana', last="Scully", common='Starbuck'),
+                 office=dict(location='Parts unknown', active=True),
+                 age=25)]
+        dh = DataHammer(data)
+        expect = (
+            '"last","first","nick","age","where"',
+            '"O\'herlihan","Rex","The Singing Cowboy",28,"The Range"',
+            '"Frog","Kermit the",,75,"The Swamp"',
+            '"Scully","Dana","Starbuck",25,"Parts unknown"'
+        )
+
+        # Is there a guarantee that the order is preserved?
+        csv = dh._toCSV('name.last', 'name.first', nick='name.common',
+                        age='age', where='office.location')
+        print("CSV = " + str(csv))
+        for nth, row in enumerate(csv):
+            print("%d: %s" % (nth, row))
+            print("   " + expect[nth])
+        assert expect == csv
+
+    def test_flatten(self):
+        # Start with deterministic data...
+        inputs = ["text", 5, True, False, None, -123.456, object(), Obj(a=123, b="bee")]
+        expect = list(inputs)
+
+        def add(data, flat):
+            inputs.append(data)
+            expect.extend(flat)
+
+        for group in ("aa bb cc".split(), ("other", 12, False, None, True, 0.0)):
+            add(group, group)
+
+        dh = DataHammer(inputs)
+        result = dh._flatten()
+        assert expect == ~result
+
+        # Append non-deterministic types (set, dict).
+        l0 = len(expect)
+
+        dd1 = {"dog", "elk", "fox", "gopher"}
+        expect.extend(dd1)
+        l1 = len(expect)
+
+        dd2 = {"a": "apple", "b": "bug", "c": "crayon"}
+        expect.extend(dd2.values())
+        l2 = len(expect)
+
+        inputs.extend((dd1, dd2))
+        dh = DataHammer(inputs)
+        result = ~dh._flatten()
+
+        # Compare by sections, including order
+        sl0 = slice(l0)
+        sl1 = slice(l0, l1)
+        sl2 = slice(l0 + l1, l2)
+
+        assert expect[sl0] == result[sl0]
+        assert sorted(expect[sl1]) == sorted(result[sl1])
+        assert sorted(expect[sl2]) == sorted(result[sl2])
+
+    def test_flatten2(self):
+        rng = random.Random()
+
+        def num():
+            return rng.randint(0, 5000)
+
+        def flatten(obj):
+            return [item for row in obj for item in (row if isinstance(row, list) else [row])]
+
+        # 2 lists of 3 lists of 4 lists of 5 numbers
+        data = [[[list(reversed([num() for a in range(5)]))
+                  for b in range(4)] for c in range(3)] for d in range(2)]
+
+        # Loop through, even past the depth (hence a no-op).
+        dh = DataHammer(data)
+        expect = data
+        for loop in range(1, 6):
+            print("Loop #%d: %s" % (loop, expect))
+            expect = flatten(expect)
+            dh = dh._flatten()
+            assert expect == ~dh
 
     def test_array_mods(self):
         dd = lrange(-3, 8)

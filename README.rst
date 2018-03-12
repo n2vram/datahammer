@@ -1,9 +1,15 @@
 datahammer
 ##########
 
-`Version 0.9.1`
+`Version 0.9.2`
 
 "When all you have is a hammer, everything looks like a nail." - *Anonymous*
+
+----------
+
+`Note that although the version is not yet at 1.0, the code is stable and full
+test coverage.  The concern is primarily with the clarity and sufficiency of this
+documentation.`
 
 .. contents:: **Index**
    :depth: 2
@@ -72,8 +78,6 @@ Construction
 
 Creating a *DataHammer* can take several sources for its input.  It is designed for use on a **list** of items
 with the same schema.
-
-:class: attention
 
 +--------------------+----------------------------------------------------------------+
 |  **Parameters**    |     **Description**                                            |
@@ -197,16 +201,25 @@ This is a list of supported functions. [1]_
 +------------------------------------------+---------------------------------------------------------------+
 | ``OBJ._pick(SELECTOR, SELECTOR, ...)``   | Return a *DataHammer* instance with a *dict* created from one |
 |                                          | or more parts of the contained data picked by *str* given by  |
-|                                          | the *SELECTOR* , either positional named parameters.          |
-|                                          | Parameters indicate the key in the resulting item, and how to |
-|                                          | dereference the data from the contained items. The rules are: |
-|                                          | [8]_                                                          |
+|                                          | the *SELECTOR* , either positional or named parameters.       |
+|                                          | Parameters dictate the keys in the resulting items, and how   |
+|                                          | to dereference the data from the contained items.  See [8]_   |
+|                                          |                                                               |
+|                                          | The rules are:                                                |
 |                                          |                                                               |
 |                                          | * Positional parameters are *str* used to dereference parts   |
 |                                          |   of contained items, with the text after the last "." used   |
 |                                          |   as the key in the resulting items.                          |
 |                                          | * Named parameters are similar, but allow renaming the data   |
 |                                          |   the resulting items.                                        |
++------------------------------------------+---------------------------------------------------------------+
+| ``OBJ._flatten()``                       | Return a *DataHammer* instance with contained items that are  |
+|                                          | the result of flattening *this* instance's contained items by |
+|                                          | one level. Sub-items are added in iteration-order for items   |
+|                                          | that are a *set*, *list* or *tuple* and for values from a     |
+|                                          | *dict*.                                                       |
+|                                          |                                                               |
+|                                          | Other types are not flattened, and are added as-is.           |
 +------------------------------------------+---------------------------------------------------------------+
 | ``OBJ._mutator()``                       | Returns a *DataHammer.Mutator* instance to be used for making |
 |                                          | modifications to the contained data.  See `Mutators`_.        |
@@ -388,6 +401,26 @@ Releases
    +-------------+--------------------------------------------------------+
    |    0.9.1    | Addition of "_pick" method.                            |
    +-------------+--------------------------------------------------------+
+   |    0.9.2    | Addition of "_flatten" method.                         |
+   +-------------+--------------------------------------------------------+
+
+
+Reporting Issues, Contributing
+------------------------------
+
+As an open source project, *DataHammer* welcomes contributions and feedback.
+
+1. Report any issues, including with the functionality or with the documentation
+   via the GitHub project: https://github.com/n2vram/datahammer/issues
+
+2. To contribute to the source code, please use a GitHub pull request for the
+   project, making sure to include full/extensive unit tests for any changes.  Note
+   that if you cannot create a PR, then open an issue and attach a `diff` output
+   there. https://github.com/n2vram/datahammer/
+
+3. To translate the documentation, please follow the same process as for source
+   code contributions.
+
 
 Foot Notes
 ----------
@@ -499,8 +532,9 @@ Caveats:
 5. If there are multiple parameters that result in the same key, the result is undefined.
    Currently, positional parameters are processed in order before the named parameters,
    but that is not guaranteed to be true in future releases.
-6. Currently, a bare int (in decimal form) is used to index into lists, but that syntax may
-   change and is not guaranteed to be true in future releases.
+6. Currently, a bare int (in decimal form) is used to index into lists, but that syntax is not
+   guaranteed to be true in future releases.  If a bare int is used as the last component of a
+   postitional parameter value, the resulting key will be the decimal string.
 
 Example:
 
@@ -524,3 +558,4 @@ Example:
         [{'animal': 'ape', 'fruit': 'Apple'},
          {'animal': 'bat', 'fruit': 'Banana'},
          {'animal': 'cat', 'fruit': 'Carmel'}]
+

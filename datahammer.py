@@ -20,7 +20,7 @@ import sys
 from copy import deepcopy, copy
 from types import GeneratorType
 
-version = '0.9.1'
+version = '0.9.2'
 STRING_TYPES = (basestring,) if sys.version_info[0] == 2 else (str,)
 
 description = (
@@ -361,13 +361,13 @@ class DataHammer(object):
 
     def _insert(self, index, item):
         # Function: OBJ._insert(INDEX, ITEM) - new OBJ with ITEM inserted at INDEX.
-        """Returns a new DataHammer instance with ITEM at the given INDEX.
+        """Return a new DataHammer instance with ITEM at the given INDEX.
         This object is not changed."""
         return DataHammer(self.__listop(list.insert, index, item))
 
     def _extend(self, items):
         # Function: OBJ._extend(INDEX, ITEMS) - new OBJ with ITEMS appended to the list.
-        """Returns a new DataHammer instance with the given iterable of items appended.
+        """Return a new DataHammer instance with the given iterable of items appended.
         This object is not changed."""
         return DataHammer(self.__listop(list.extend, items))
 
@@ -386,7 +386,7 @@ class DataHammer(object):
 
     def _pick(self, *names, **pairs):
         # Function: OBJ._pick(CHOICES)
-        """Returns a new DataHammer instance with dictionaries with only the given names.
+        """Return a new DataHammer instance with dictionaries with only the given names.
         This is an easy way to retain/extract data items from the contained data.
         Positional parameters are names, keyword parameters allow renaming.
 
@@ -407,6 +407,68 @@ class DataHammer(object):
                 key = key.split('.')[-1]
                 datum[key] = self.__fetch(item, name)
             data.append(datum)
+        return DataHammer(data)
+
+    def _toCSV(self, *names, **pairs):
+        # Function: OBJ._toCSV(CHOICES)
+        """Return a tuple of lines in CSV format; parameters are similar to `_pick()`.
+        Positional parameters are names, keyword parameters allow renaming.
+
+        The first line will be the headers: the names and pairs.keys()
+        Note: for versions of Python before 3.6, the ordering of values specified in
+        `pairs` is not necessarily preserved, but in all cases the order of the header
+        and value lines are consistent.
+
+        For example:
+           OBJ._toCSV('name.last', 'name.first', nick='name.common',
+                      age='age', where='office.location')
+
+        Might return a tuple like:
+          ("\"last\",\"first\",\"nick\",\"age\",\"where\"",
+           "\"O'herlihan\",\"Rex\",\"The Singing Cowboy\",28,\"The Range\"",
+           "\"Frog\",\"Kermit the\",\"\",75,\"The Swamp\"",
+           "\"Scully\",\"Dana\",\"Starbuck\",25,\"Parts unknown\"")
+
+        Note: this method handles support numerical indexing in choices with raw decimal. Eg:
+             age='x.3.age'  # The value for ITEM.x._ind(3).age
+
+        This object is not changed."""
+
+        data = [",".join('"%s"' % e.split('.')[-1] for e in (list(names) + list(pairs.keys())))]
+        keys = list(names) + list(pairs.values())
+        for row in self.__data:
+            out = []
+            for col, key in enumerate(keys):
+                datum = self.__fetch(row, key)
+                if isinstance(datum, (int, float, bool)):
+                    text = json.dumps(datum)
+                elif datum in (None, ""):
+                    text = ""
+                else:
+                    text = str(datum)
+                    if '"' in text:
+                        text = text.replace('"', r'\"')
+                    text = '"' + text + '"'
+                out.append(text)
+            data.append(",".join(out))
+        return tuple(data)
+
+    def _flatten(self):
+        # Function: OBJ._flatten()
+        """Return a DataHammer instance with contained items that are the result of flattening
+        this instance's contained items by one level. Sub-items are added in iteration-order
+        for items that are a set, list or tuple and for the values from a dict.
+        Other types are not flattened, and are added as-is.
+
+        This object is not changed."""
+        data = []
+        for item in self.__data:
+            if isinstance(item, dict):
+                data.extend(item.values())
+            elif isinstance(item, (list, tuple, set)):
+                data.extend(item)
+            else:
+                data.append(item)
         return DataHammer(data)
 
     @classmethod
