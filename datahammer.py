@@ -20,7 +20,7 @@ import sys
 from copy import deepcopy, copy
 from types import GeneratorType
 
-version = '0.9.2'
+version = '0.9.4'
 STRING_TYPES = (basestring,) if sys.version_info[0] == 2 else (str,)
 
 description = (
@@ -384,6 +384,12 @@ class DataHammer(object):
             raise AttributeError("Cannot _slice a non-list.")
         return DataHammer(self.__data[start:end:step])
 
+    @staticmethod
+    def __freeze_names(obj):
+        # Freeze the names for the keys and values
+        return tuple(obj.items()) if isinstance(obj, dict) else \
+            tuple((ele.split('.')[-1], ele) for ele in obj)
+
     def _pick(self, *names, **pairs):
         # Function: OBJ._pick(CHOICES)
         """Return a new DataHammer instance with dictionaries with only the given names.
@@ -401,13 +407,35 @@ class DataHammer(object):
 
         This object is not changed."""
         data = []
+        keys = self.__freeze_names(names) + self.__freeze_names(pairs)
         for item in self.__data:
             datum = {}
-            for key, name in tuple(zip(names, names)) + tuple(pairs.items()):
-                key = key.split('.')[-1]
+            for key, name in keys:
                 datum[key] = self.__fetch(item, name)
             data.append(datum)
         return DataHammer(data)
+
+    def _tuples(self, *names):
+        # Function: OBJ._tuples(CHOICES)
+        """Return a tuple of tuples; positional parameters are similar to `_pick()`.
+        Named parameters are not allowed in order to guarantee ordering
+
+        For example:
+           OBJ._tuples('name.last', 'name.first', nick='name.common',
+                      age='age', where='office.location')
+
+        Might return a tuple like:
+          (("O'herlihan","Rex","The Singing Cowboy",28,"The Range"),
+           ("Frog","Kermit","",75,"The Swamp"),
+           ("Scully","Dana","Starbuck",25,"Parts unknown"))
+
+        This object is not changed."""
+        data = []
+        keys = self.__freeze_names(names)
+        for row in self.__data:
+            out = tuple(self.__fetch(row, name) for _, name in keys)
+            data.append(out)
+        return tuple(data)
 
     def _toCSV(self, *names, **pairs):
         # Function: OBJ._toCSV(CHOICES)
@@ -445,13 +473,80 @@ class DataHammer(object):
                 elif datum in (None, ""):
                     text = ""
                 else:
-                    text = str(datum)
-                    if '"' in text:
-                        text = text.replace('"', r'\"')
-                    text = '"' + text + '"'
+                    text = json.dumps(str(datum))
                 out.append(text)
             data.append(",".join(out))
         return tuple(data)
+
+    def _groupby(self, group, values, combine=None):
+        # Function: OBJ._groupby(GROUP, VALUES, COMBINE=None)
+        """Return a new DataHammer instance after aggregating the named VALUE(s) with similar KEY(s).
+        The items in the returned object will have keys from 'group' and from 'values'.
+        The values will be a list unless 'combine' is specified.
+
+        This object is not changed.
+
+        Both 'group' and 'values' can be either of:
+        1. A tuple of strings, which are used to dereference each item.  Resulting key is the
+           last element after a '.' in the string.
+        2. A dict, the keys are the resulting keys and the values are used to dereference into
+           the items.
+
+        For example, to reduce a sample by state and gender, and get the average age and number
+        of people in the sample, you could use:
+
+           result = OBJ._aggregat(('state', 'gender'), ('age', ),
+                                  combine=lambda ages: (statistics.mean(ages), len(ages)))
+
+        NOTES:
+
+        1. The current implementation requires that every 'key' value must be hashable.
+
+        2. The order of the resulting ITEMS is the same order as the first occurence of each unique
+           set of 'key' values.  And the order of values in the lists for each 'key' name is the same
+           as the order in which those values occurred for the associate 'key' values.
+        """
+        key_names = self.__freeze_names(group)
+        value_names = self.__freeze_names(values)
+        key_group = tuple(k for k, _ in key_names)
+        value_group = tuple(k for k, _ in value_names)
+
+        # In order to group by the associated 'key' values, we need lookup key, so we use a hash
+        # of the ordered values.  We store the key names in the 'names' map, and the values in
+        # the 'values' map.
+        names = {}
+        values = {}
+        ordered = []
+
+        for row in self.__data:
+            # Get the values associated with the key_names, in order:
+            klist = []
+            for kname, oname in key_names:
+                klist.append(self.__fetch(row, oname))
+            # This fails on unhashable 'key' values:
+            index = hash(tuple(klist))
+            # Save the name values, and add an empty list for every 'value' name:
+            if index not in names:
+                names[index] = klist
+                values[index] = dict([(k, []) for k in value_group])
+                ordered.append(index)
+            # Now, append each item to the appropriate
+            vdict = values[index]
+            for vname, oname in value_names:
+                vdict[vname].append(self.__fetch(row, oname))
+
+        # Now, we have the dictionaries and must "unravel" them into a list.
+        data = []
+        for index in ordered:
+            row = dict(zip([k for k in key_group], names[index]))
+            vind = values[index]
+            if combine:
+                vals = [vind[k] for k in value_group]
+                vind = zip(value_group, combine(*vals))
+            row.update(vind)
+            data.append(row)
+
+        return DataHammer(data)
 
     def _flatten(self):
         # Function: OBJ._flatten()

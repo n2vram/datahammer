@@ -1,6 +1,7 @@
-import datetime
 import collections
 import copy
+import datetime
+import gzip
 import json
 import logging
 import os
@@ -15,10 +16,9 @@ from datahammer import DataHammer, tname, JEncoder
 logging.basicConfig(level=logging.DEBUG)
 
 
-def open_file(*names, **kwds):
-    path = os.path.join(os.path.dirname(__file__), 'files', *names)
-    mode = kwds.get('mode', 'r')
-    return open(path, mode)
+def open_file(name, mode='r', gz=False):
+    path = os.path.join(os.path.dirname(__file__), 'files', name)
+    return gzip.GzipFile(path, mode) if gz else open(path, mode)
 
 
 def lrange(*args):
@@ -37,6 +37,10 @@ def compare(ecode, rcode):
     result = eval(rcode)
     dump(rcode, result)
     assert expect == ~result
+
+
+def mean(numbers):
+    return float(sum(numbers)) / len(numbers)
 
 
 class Obj(object):
@@ -102,6 +106,14 @@ class TestDataHammer(object):
 
     JOBS_ORIG = json.load(open_file('jobsdata.json'))
     JOBS_DATA = json.load(open_file('jobs.json'))
+
+    PEEP_DATA = (
+        dict(name=dict(first='Rex', last="O'herlihan", common='The Singing Cowboy'),
+             office=dict(location='The Range', active=False), age=28),
+        dict(name=dict(first='Kermit "the"', last="Frog", common=None),
+             office=dict(location='The Swamp', active=True), age=75),
+        dict(name=dict(first='Dana', last="Scully", common='Starbuck'),
+             office=dict(location='Parts unknown', active=True), age=25))
 
     def test_speed(self):
         fname = os.environ.get('SPEED_TEST_JSON')
@@ -1008,7 +1020,7 @@ class TestDataHammer(object):
         dd = lrange(-3, 8)
         dh = DataHammer(dd)
         knils = [dict(k1=None, k2=None, k3=None) for i in dd]
-        assert ~dh._pick('k1', 'x.y.k2', k3='foo.bar') == knils
+        assert knils == ~dh._pick('k1', 'x.y.k2', k3='foo.bar')
 
     def test_pick2(self):
         # Only take the 'meta'...
@@ -1034,34 +1046,37 @@ class TestDataHammer(object):
         assert ["0"] == list(res[0].keys())
 
     def test_toCSV(self):
-        data = [
-            dict(name=dict(first='Rex', last="O'herlihan", common='The Singing Cowboy'),
-                 office=dict(location='The Range', active=False),
-                 age=28),
-            dict(name=dict(first='Kermit the', last="Frog", common=None),
-                 office=dict(location='The Swamp', active=True),
-                 age=75),
-            dict(name=dict(first='Dana', last="Scully", common='Starbuck'),
-                 office=dict(location='Parts unknown', active=True),
-                 age=25)]
-        dh = DataHammer(data)
+        dh = DataHammer(self.PEEP_DATA)
         expect = (
-            '"last","first","nick","age","where"',
-            '"O\'herlihan","Rex","The Singing Cowboy",28,"The Range"',
-            '"Frog","Kermit the",,75,"The Swamp"',
-            '"Scully","Dana","Starbuck",25,"Parts unknown"'
+            "\"last\",\"first\",\"nick\",\"age\",\"where\"",
+            "\"O'herlihan\",\"Rex\",\"The Singing Cowboy\",28,\"The Range\"",
+            "\"Frog\",\"Kermit \\\"the\\\"\",,75,\"The Swamp\"",
+            "\"Scully\",\"Dana\",\"Starbuck\",25,\"Parts unknown\""
         )
 
         # Is there a guarantee that the order is preserved?
         csv = dh._toCSV('name.last', 'name.first', nick='name.common',
                         age='age', where='office.location')
-        print("CSV = " + str(csv))
+        print("CSV = " + csv[2])
+        print("expect = " + expect[2])
         for nth, row in enumerate(csv):
             print("%d: %s" % (nth, row))
             print("   " + expect[nth])
+        for n in range(len(expect)):
+            print("Row %d:\n  <<<%s>>>\n  <<<%s>>>" % (n, expect[n], csv[n]))
         assert expect == csv
 
-    def test_flatten(self):
+    def test_tuples(self):
+        names = ('name.last', 'name.first', 'name.common', 'age', 'office.location')
+        dh = DataHammer(self.PEEP_DATA)
+        expect = tuple(
+            (e['name']['last'], e['name']['first'], e['name']['common'],
+             e['age'], e['office']['location'])
+            for e in self.PEEP_DATA)
+        out = dh._tuples(*names)
+        assert expect == out
+
+    def test_flatten1(self):
         # Start with deterministic data...
         inputs = ["text", 5, True, False, None, -123.456, object(), Obj(a=123, b="bee")]
         expect = list(inputs)
@@ -1122,6 +1137,37 @@ class TestDataHammer(object):
             expect = flatten(expect)
             dh = dh._flatten()
             assert expect == ~dh
+
+    def test_groupby1(self):
+        with open_file('people.json.gz', gz=True) as fd:
+            data = json.load(fd)
+
+        dh = DataHammer(data)
+        ag = dh._groupby(('age', 'name.last'),
+                         ('salary', 'location.state'))
+        print("groupby 1: {:-0j}\n".format(ag))
+
+        with open_file('people-ag1.json.gz', gz=True) as fd:
+            expect = json.load(fd)
+        assert expect == ~ag
+
+    def test_groupby2(self):
+        with open_file('people.json.gz', gz=True) as fd:
+            data = json.load(fd)
+        dh = DataHammer(data)
+
+        # Argument order matches that specifed to _groupby() as the 'value' names.
+        def reductor(salary, state):
+            return mean(salary), dict(collections.Counter(state))
+
+        ag = dh._groupby(('age', 'name.last'),
+                         ('salary', 'location.state'),
+                         combine=reductor)
+        print("groupby 2: {:-0j}\n".format(ag))
+
+        with open_file('people-ag2.json.gz', gz=True) as fd:
+            expect = json.load(fd)
+        assert expect == ~ag
 
     def test_array_mods(self):
         dd = lrange(-3, 8)

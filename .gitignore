@@ -20,3 +20,4 @@ __pycache__
 # MackOS crap.
 .DS_Store*
 MANIFEST
+junk/

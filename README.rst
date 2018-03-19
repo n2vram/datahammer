@@ -1,7 +1,7 @@
 datahammer
 ##########
 
-`Version 0.9.2`
+`Version 0.9.4`
 
 "When all you have is a hammer, everything looks like a nail." - *Anonymous*
 
@@ -199,20 +199,6 @@ This is a list of supported functions. [1]_
 | ``OBJ._slice(START [, END [, STEP ] ])`` | Return a *DataHammer* instance with the list sliced according |
 |                                          | to the given indices (like *list* slicing works).             |
 +------------------------------------------+---------------------------------------------------------------+
-| ``OBJ._pick(SELECTOR, SELECTOR, ...)``   | Return a *DataHammer* instance with a *dict* created from one |
-|                                          | or more parts of the contained data picked by *str* given by  |
-|                                          | the *SELECTOR* , either positional or named parameters.       |
-|                                          | Parameters dictate the keys in the resulting items, and how   |
-|                                          | to dereference the data from the contained items.  See [8]_   |
-|                                          |                                                               |
-|                                          | The rules are:                                                |
-|                                          |                                                               |
-|                                          | * Positional parameters are *str* used to dereference parts   |
-|                                          |   of contained items, with the text after the last "." used   |
-|                                          |   as the key in the resulting items.                          |
-|                                          | * Named parameters are similar, but allow renaming the data   |
-|                                          |   the resulting items.                                        |
-+------------------------------------------+---------------------------------------------------------------+
 | ``OBJ._flatten()``                       | Return a *DataHammer* instance with contained items that are  |
 |                                          | the result of flattening *this* instance's contained items by |
 |                                          | one level. Sub-items are added in iteration-order for items   |
@@ -220,6 +206,34 @@ This is a list of supported functions. [1]_
 |                                          | *dict*.                                                       |
 |                                          |                                                               |
 |                                          | Other types are not flattened, and are added as-is.           |
++------------------------------------------+---------------------------------------------------------------+
+| ``OBJ._tuple(SELECTOR, SELECTOR, ...)``  | Return a tuple of results for each contained item, the result |
+|                                          | will be a tuple of values from the items, dereferenced by the |
+|                                          | *SELECTOR* parameters, in the same order. See [8]_            |
+|                                          |                                                               |
+|                                          | Only named *SELECTOR* parameters are allowed.                 |
++------------------------------------------+---------------------------------------------------------------+
+| ``OBJ._toCSV(SELECTOR, SELECTOR, ...)``  | Return a tuple of `str` like a `Comma Separated Values` file, |
+|                                          | the first `str` represents the headers for each column, and   |
+|                                          | each subsequent contains a CSV-style representation of the    |
+|                                          | requested values from each item (which must be serializable). |
+|                                          | See [8]_                                                      |
+|                                          |                                                               |
+|                                          | Both positional and named *SELECTOR* parameters are allowed.  |
++------------------------------------------+---------------------------------------------------------------+
+| ``OBJ._pick(SELECTOR, SELECTOR, ...)``   | Return a *DataHammer* instance of *dict* items made from one  |
+|                                          | or more sub-items specified by the *SELECTOR*, as either      |
+|                                          | positional or named parameters.                               |
+|                                          | Parameters dictate the keys in the resulting items. See [8]_  |
+|                                          |                                                               |
+|                                          | Both positional and named *SELECTOR* parameters are allowed.  |
++------------------------------------------+---------------------------------------------------------------+
+| ``OBJ._groupby(GRP, VALS [, POST])``     | Return a *DataHammer* instance of *dict* items made by taking |
+|                                          | all sub-items specified by `VALS` and combine them with other |
+|                                          | items with the same `GRP` values.  It is similar to the `SQL` |
+|                                          | **GROUP BY** clause.  See [8]_ and [Grouping]_.               |
+|                                          |                                                               |
+|                                          | Both positional and named *SELECTOR* parameters are allowed.  |
 +------------------------------------------+---------------------------------------------------------------+
 | ``OBJ._mutator()``                       | Returns a *DataHammer.Mutator* instance to be used for making |
 |                                          | modifications to the contained data.  See `Mutators`_.        |
@@ -278,6 +292,34 @@ Indexing Examples:
         [10, 13]
 
 
+Grouping
+^^^^^^^^
+
+The *_groupby(GROUP, VALUES [, POSTPROC])* method creates a new *DataHammer* instance, grouping values from
+multiple source items.  It functions somewhat like the **GROUP BY** feature of SQL, however rather than
+necessarily combining column values, a the list of values is created.
+
+The `GROUP` and `VALUES` parameters should be either a list/tuple or a dict.
+
+- Strings in the list/tuple are treated like named `SELECTOR` parameters
+- Items in a dict are treated like named `SELECTOR` parameters.
+
+For each unique sets of values for the `GROUP` keys, one item will exist in the resulting instance. Each of
+the new items will contain the grouping values and a value per `VALUES` key.  The `GROUP` and `VALUES`
+parameters may be either a list/tuple or a dict of `SELECTOR` parameters (see above).
+
+For every key in the `VALUES` parameter, a list is built with the corresponding values, one list for each
+set of `GROUP` values.
+
+The `POSTPROC` parameter parameter, is optional and unless provided: each resulting item will contain the
+corresponding list for each key in `VALUES`.  If `FUNC` is provided, it will be called once per resulting
+item.  The lists are passed parameters in the same order as the keys in `VALUES`.
+
+Note that the order of the resulting items will be the same as the order of the first occurence of that set
+of `GROUP` keys in the source items.  And the order of the list of values for each `VALUES` key is the same
+as the order that those occurred in the source items.
+
+
 Mutators
 ^^^^^^^^
 
@@ -323,7 +365,6 @@ instance, and the name *Mutator* is also used for *DataHammer.Mutator*.
 
 Examples
 --------
-
 
 Given a JSON file that has metadata separated from the data values, we can easily
 combine these, and find the ones which match criteria we want.
@@ -379,11 +420,11 @@ Installation
 ------------
 Install the package using **pip**, eg:
 
-  `sudo pip install datahammer`
+  `pip install --user datahammer`
 
-Or for a specific version:
+Or for a specific version of Python:
 
-  `sudo python3 -m pip install datahammer`
+  `python3 -m pip --user install datahammer`
 
 
 To the source git repository, use:
@@ -401,7 +442,9 @@ Releases
    +-------------+--------------------------------------------------------+
    |    0.9.1    | Addition of "_pick" method.                            |
    +-------------+--------------------------------------------------------+
-   |    0.9.2    | Addition of "_flatten" method.                         |
+   |    0.9.2    | Addition of "_flatten" and "_toCSV" methods.           |
+   +-------------+--------------------------------------------------------+
+   |    0.9.4    | Addition of "_groupby" and "_tuples" methods.          |
    +-------------+--------------------------------------------------------+
 
 
@@ -518,44 +561,54 @@ the contained data.  Meaning: if a *DataHammer* with two items contains a `dict`
 with an attribute "foo", then using **OBJ._mutator().foo** will update differently.
 
 
-.. [8] The `_pick()` method.
+.. [8] *SELECTOR* Syntax.
 
-A *SELECTOR* must be a `str`, but can be named or positional.
+The value of a *SELECTOR* must be a `str`, but depending on the method can be named or positional.
 
-1. Resulting items are all `dict` instances.
-2. For named parameters, the name will be used for the key in the resulting items.
-3. For positional parameters, the text after the last dot, if any, is used for the resulting key.
-4. Recursive dereferences are allowed with a dot (`.`) separator between sub-keys.
+1. For positional parameters, the text after the last dot, if any, is used for the resulting key.
+2. For named parameters, the value will be used to fetch the value, and the parameter name will be used for
+   the key in the resulting item.
+3. For both, a dot (`.`) indicates a sub-key, like normal dot notation and/or the *_ind()* method.
 
-Caveats:
+*Caveats*:
 
-5. If there are multiple parameters that result in the same key, the result is undefined.
-   Currently, positional parameters are processed in order before the named parameters,
+4. If there are multiple parameters that result in the same key, the result is undefined.
+5. Currently, positional parameters are processed in order before the named parameters,
    but that is not guaranteed to be true in future releases.
 6. Currently, a bare int (in decimal form) is used to index into lists, but that syntax is not
    guaranteed to be true in future releases.  If a bare int is used as the last component of a
-   postitional parameter value, the resulting key will be the decimal string.
+   postitional parameter value, the resulting key will be a `str` - the decimal value.
 
-Example:
 
-    .. code:: python
+Examples:
+^^^^^^^^^
+     
+- The positional parameter **"b.b1"** would dererence a value like *OBJ.b.b1*, and the resulting key would be
+  the part after the last dot: **"b1"**.
 
-        >>> dh = DataHammer([
-        ...   {"a": 100, "b": {"b1": [101, 102, 103], "b2": "ape"}, "c": ["Apple", "Anise"]},
-        ...   {"a": 200, "b": {"b1": [201, 202, 203], "b2": "bat"}, "c": ["Banana", "Basil"]},
-        ...   {"a": 300, "b": {"b1": [301, 302, 303], "b2": "cat"}, "c": ["Cherry", "Cayenne"]}
-        ... ])
+- The named parameter **animal="b.b2"** would dererence like *OBJ.b.b2*, and the resulting key would be
+  **"animal"**.
 
-        >>> ~dh._pick('a', 'b.b1', animal='b.b2', food='c', nil='this.is.missing')
-        [{'a': 100, 'b1': [101, 102, 103], 'animal': 'ape', 'food': ['Apple', 'Anise'], 'nil': None},
-         {'a': 200, 'b1': [201, 202, 203], 'animal': 'bat', 'food': ['Banana', 'Basil'], 'nil': None},
-         {'a': 300, 'b1': [301, 302, 303], 'animal': 'cat', 'food': ['Cherry', 'Cayenne'], 'nil': None}]         
+.. code:: python
 
-        >>> ~dh._pick('b.b1', b1='c')
-        #### Result is undefined due to the key collision.
+    >>> dh = DataHammer([
+    ...   {"a": 100, "b": {"b1": [101, 102, 103], "b2": "ape"}, "c": ["Apple", "Anise"]},
+    ...   {"a": 200, "b": {"b1": [201, 202, 203], "b2": "bat"}, "c": ["Banana", "Basil"]},
+    ...   {"a": 300, "b": {"b1": [301, 302, 303], "b2": "cat"}, "c": ["Cherry", "Cayenne"]}
+    ... ])
+  
+    >>> ~dh._pick('a', 'b.b1', animal='b.b2', food='c', nil='this.is.missing')
+    [{'a': 100, 'b1': [101, 102, 103], 'animal': 'ape', 'food': ['Apple', 'Anise'], 'nil': None},
+     {'a': 200, 'b1': [201, 202, 203], 'animal': 'bat', 'food': ['Banana', 'Basil'], 'nil': None},
+     {'a': 300, 'b1': [301, 302, 303], 'animal': 'cat', 'food': ['Cherry', 'Cayenne'], 'nil': None}]         
 
-        >>> ~dh._pick(animal='b.b2', fruit='c.0')   ## This '.0' syntax *might* change in future releases.
-        [{'animal': 'ape', 'fruit': 'Apple'},
-         {'animal': 'bat', 'fruit': 'Banana'},
-         {'animal': 'cat', 'fruit': 'Carmel'}]
+    #### Result is undefined due to the key collision.
+    >>> ~dh._pick('b.b1', b1='c')
+
+    ## This '.0' syntax *might* change in future releases.
+    >>> ~dh._pick(animal='b.b2', fruit='c.0')
+    [{'animal': 'ape', 'fruit': 'Apple'},
+     {'animal': 'bat', 'fruit': 'Banana'},
+     {'animal': 'cat', 'fruit': 'Carmel'}]
+
 
