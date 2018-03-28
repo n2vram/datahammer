@@ -5,7 +5,7 @@ DataHammer Examples
 It is probably easier to show the utility of *DataHammer* with some examples.
 
 
-1. To construct a *DataHammer* isntance you generally a list/tuple/iterable of items.  Many builtin functions operate
+1. To construct a *DataHammer* instance you generally a list/tuple/iterable of items.  Many builtin functions operate
    on the *DataHammer* instance as it would on the list of objects.  The original data can be returned using the tilde
    operator (`~`).
 
@@ -99,7 +99,9 @@ It is probably easier to show the utility of *DataHammer* with some examples.
     147270
     >>> min(dh.salary), mean(dh.salary), max(dh.salary)
     (8000, 18408.75, 33700)
-    >>> sum(dh.gender == 'F')     # This counts occurences of True
+
+    # This counts occurrences of True
+    >>> sum(dh.gender == 'F')
     5
 
 

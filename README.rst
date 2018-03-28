@@ -580,8 +580,8 @@ The value of a *SELECTOR* must be a `str`, but depending on the method can be na
    postitional parameter value, the resulting key will be a `str` - the decimal value.
 
 
-Examples:
-^^^^^^^^^
+Examples
+^^^^^^^^
      
 - The positional parameter **"b.b1"** would dererence a value like *OBJ.b.b1*, and the resulting key would be
   the part after the last dot: **"b1"**.

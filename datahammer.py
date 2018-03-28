@@ -21,7 +21,7 @@ from copy import deepcopy, copy
 from types import GeneratorType
 
 version = '0.9.4'
-STRING_TYPES = (basestring,) if sys.version_info[0] == 2 else (str,)
+_STR_TYPES = (basestring,) if sys.version_info[0] == 2 else (str,)
 
 description = (
     'This module provides an easy way to manipulate and inspect lists of'
@@ -30,10 +30,10 @@ description = (
     'done on the items in parallel in a concise fashion.  Many features '
     'will also work on other data types.')
 
-NO_ARG = object()
+_NO_ARG = object()
 
 
-def tname(obj):
+def _tname(obj):
     return type(obj).__name__
 
 
@@ -64,7 +64,7 @@ class JEncoder(json.JSONEncoder):
     def jload(cls, arg, extra):
         if not isinstance(extra, dict):
             extra = {}
-        if isinstance(arg, STRING_TYPES):
+        if isinstance(arg, _STR_TYPES):
             return json.loads(arg, **extra)
         if callable(getattr(arg, 'read', None)):
             return json.load(arg, **extra)
@@ -141,7 +141,7 @@ class DataHammer(object):
             else:
                 raise TypeError("Invalid index types: " + ",".join(e.__name__ for e in types))
         else:
-            raise TypeError("Invalid index type: " + tname(indices))
+            raise TypeError("Invalid index type: " + _tname(indices))
         return DataHammer(data, _nested=self.__nested)
 
     def _ind(self, index):
@@ -269,6 +269,10 @@ class DataHammer(object):
         # Function: bool(x) - test for non-empty contained list.
         return bool(self.__data)
 
+    def __neg__(self):
+        # Operation: -OBJ - (unary minus) new OBJ from [not ITEM]
+        return self._apply(operator.not_)
+
     __nonzero__ = __bool__
 
     #
@@ -289,10 +293,6 @@ class DataHammer(object):
     def _float(self):
         # Function: float(OBJ) - new OBJ from [float(ITEM)]
         return self._apply(float)
-
-    def __neg__(self):
-        # Operation: -OBJ - (unary minus) new OBJ from [not ITEM]
-        return self._apply(operator.not_)
 
     #
     # Bitwise logical operators do item-wise operations.
@@ -320,14 +320,14 @@ class DataHammer(object):
     #
     # Special methods
     #
-    def _apply(self, func, arg=NO_ARG, *args, **kwds):
+    def _apply(self, func, arg=_NO_ARG, *args, **kwds):
         # Function: OBJ._apply(func, *arg, **kwds) - new OBJ from [func(ARG, *ARGS, **KWDS)]
         if isinstance(arg, DataHammer):
             arg = ~arg
         if isinstance(arg, (list, tuple)):
             data = [func(*(row + args), **kwds) for row in zip(self.__data, arg)]
         else:
-            args = (tuple() if arg is NO_ARG else (arg,)) + args
+            args = (tuple() if arg is _NO_ARG else (arg,)) + args
             data = [func(item, *args, **kwds) for item in self.__data]
         result = DataHammer(data[0] if self.__nested and data else data)
         return result
@@ -387,7 +387,8 @@ class DataHammer(object):
     @staticmethod
     def __freeze_names(obj):
         # Freeze the names for the keys and values
-        return tuple(obj.items()) if isinstance(obj, dict) else \
+        return ((obj.split('.')[-1], obj), ) if isinstance(obj, _STR_TYPES) else \
+            tuple(obj.items()) if isinstance(obj, dict) else \
             tuple((ele.split('.')[-1], ele) for ele in obj)
 
     def _pick(self, *names, **pairs):
@@ -505,6 +506,11 @@ class DataHammer(object):
         2. The order of the resulting ITEMS is the same order as the first occurence of each unique
            set of 'key' values.  And the order of values in the lists for each 'key' name is the same
            as the order in which those values occurred for the associate 'key' values.
+
+        3. The 'combine' method must return a list or tuple, one entry per argument. For example, to
+           combine values with 'sum' you could use:
+
+              lambda values: [sum(values)]
         """
         key_names = self.__freeze_names(group)
         value_names = self.__freeze_names(values)
@@ -568,7 +574,7 @@ class DataHammer(object):
 
     @classmethod
     def __fetch(cls, item, keys):
-        if isinstance(keys, STRING_TYPES):
+        if isinstance(keys, _STR_TYPES):
             keys = keys.split('.')
         for key in keys:
             if item is None:
@@ -654,14 +660,14 @@ class DataHammer(object):
 
                     # The final item must be altered in-place:
                     ndx, key = self.__keys[-1]
-                    value = _deref(item, key, NO_ARG)
-                    if overwrite or value is not NO_ARG:
+                    value = _deref(item, key, _NO_ARG)
+                    if overwrite or value is not _NO_ARG:
 
                         if ndx or (hasattr(item, 'get') and (key in item or overwrite)):
                             value = modop(value, *args, **kwds)
                             item[key] = value
 
-                        elif isinstance(key, STRING_TYPES) and hasattr(item, '__dict__' if overwrite else key):
+                        elif isinstance(key, _STR_TYPES) and hasattr(item, '__dict__' if overwrite else key):
                             value = modop(value, *args, **kwds)
                             setattr(item, key, value)
 

@@ -11,7 +11,7 @@ import re
 import six
 import time
 
-from datahammer import DataHammer, tname, JEncoder
+from datahammer import DataHammer, _tname, JEncoder
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -27,7 +27,7 @@ def lrange(*args):
 
 def dump(*args):
     for tag, obj in zip(args[::2], args[1::2]):
-        logging.info("Dump: %s <%s> = %s" % (tag, tname(obj), obj))
+        logging.info("Dump: %s <%s> = %s" % (tag, _tname(obj), obj))
     return obj
 
 
@@ -40,6 +40,8 @@ def compare(ecode, rcode):
 
 
 def mean(numbers):
+    if not numbers:
+        return 0.0
     return float(sum(numbers)) / len(numbers)
 
 
@@ -62,36 +64,29 @@ Dictless = collections.namedtuple('Dictless', ('a', 'b'))
 class Timer(object):
     def __init__(self, tag):
         self.name = tag
-        self.tag = self.limit = self.start = None
+        self.mult = self.tag = self.limit = self.start = None
 
     def __enter__(self):
         self.start = time.time()
         return self
 
     def __exit__(self, *args):
-        took = time.time() - self.start
-        if self.limit:
-            return self.compare(took)
+        took = (time.time() - self.start) * 1000
+        if not self.limit:
+            self.limit = 50.0 + max(took, 125)
+            logging.info("It took %7.1fms for '%s' max=%.1fms", took, self.name, self.limit)
+            return
 
-        # Limit is 3.5 seconds more than twice the parse time.
-        self.limit = 3.5 + took * 2
-        logging.info("It took %.3f for '%s' max=%.3f", took, self.name, self.limit)
+        # We should only get here via a with-call.
+        limit = self.mult * self.limit
+        logging.info("Took %7.1fms (%4.1f%% of %7.1f) for %-35s",
+                     took, (took / limit) * 100.0, limit, self.tag)
+        assert took <= limit, "Took %.1fms for '%s' (max %.1fms)" % (took, self.tag, limit)
 
-    def compare(self, took):
-        assert took <= self.limit, "Took %.3f for '%s' (max %.3f)" % (took, self.tag, self.limit)
-        logging.info("Took %.3f for '%s' (vs %.3f for %s)...", took, self.tag, self.limit, self.name)
-
-    def __call__(self, tag, func=None, *args, **kwds):
-        # Subsequent calls.
-        if func is None:
-            self.tag = tag
-            self.start = time.time()
-            return self
-        start = time.time()
-        try:
-            return func(*args, **kwds)
-        finally:
-            self.compare(time.time() - start)
+    def __call__(self, mult, tag):
+        self.tag = tag
+        self.mult = mult
+        return self
 
 
 IDENTIFIER = re.compile(r'[_a-zA-Z][_a-zA-Z0-9]*')
@@ -121,27 +116,44 @@ class TestDataHammer(object):
             pytest.skip("Set $SPEED_TEST_JSON to manually run speed test.")
 
         with Timer('Read/parse') as limit:
-            raw_data = open_file(fname).read()
-            world = json.loads(raw_data)
+            with (gzip.GzipFile(fname) if fname.endswith('.gz') else open(fname)) as fdes:
+                obj = json.load(fdes)
+
+        def combine1(ranks, salaries):
+            return [mean(r) for r in ranks], (min(salaries), mean(salaries), max(salaries))
+
+        time.sleep(12)
 
         # Repeat it....
-        for nloop in lrange(3):
-            logging.info("Perf test loop: #%d", nloop)
+        rows = "%d rows " % len(obj)
+        for nloop in range(3):
+            logging.info("======= PERFORMANCE LOOP: #%d =======", nloop)
 
-            with limit("Constructor"):
-                magic = DataHammer(world)
+            with limit(0.05, rows + "Constructor"):
+                dh = DataHammer(obj)
 
-            with limit("Reconstructor"):
-                DataHammer(magic)
+            with limit(0.05, rows + "Reconstructor"):
+                dh = DataHammer(dh)
 
-            with limit("Fetch project_abstract"):
-                magic.project_abstract
+            with limit(0.33, rows + "All/Equality"):
+                assert ~dh == obj
 
-            with limit("Fetch mjsector_namecode.code"):
-                magic.mjsector_namecode
+            names = ('gender', 'age')
+            with limit(2.5, rows + "toCSV"):
+                csv = dh._toCSV(*names)
+            with limit(2.0, rows + "GroupBy"):
+                one = dh._groupby(names, ('ranks', 'salary'), combine=combine1)
+            with limit(1.15, rows + "Pick"):
+                two = dh._pick(*names)
+            assert len(two._groupby(names, [])) == len(one)
+            assert len(one) == len(set(csv[1:]))
 
-            with limit("Fetch unknown keys"):
-                magic.unknown_key1.unknown_key2.unknown_key3.unknown_key4
+            with limit(1.5, rows + "Index by Gender"):
+                ismale = dh.gender == 'M'
+                male = dh[ismale]
+                fema = dh[-ismale]
+            assert (len(male) + len(fema)) == len(dh)
+            assert sorted(~male.salary + ~fema.salary) == sorted(dh.salary)
 
     def test_readme(self):
         obj = DataHammer(list(range(10, 15)))
@@ -158,21 +170,21 @@ class TestDataHammer(object):
         assert [False, True, False] == ~(dh1 == dh2)
         assert [3, 1, 4] == ~(dh1[dh2])
 
-        dh = DataHammer([[i, i*i] for i in range(10, 15)])
+        dh = DataHammer([[i, i * i] for i in range(10, 15)])
         assert [[10, 100], [11, 121], [12, 144], [13, 169], [14, 196]] == ~dh
         assert [100, 121, 144, 169, 196] == ~dh._ind(1)
         assert [False, False, True, True, True] == ~(dh._ind(1) > 125)
         assert [[12, 144], [13, 169], [14, 196]] == ~dh[dh._ind(1) > 125]
-        dh = DataHammer([dict(a=i, b=tuple(range(i, i*2))) for i in range(6)])
+        dh = DataHammer([dict(a=i, b=tuple(range(i, i * 2))) for i in range(6)])
         assert (2, 3) == dh.b[2]
         dh2 = dh.b._ind(2)
         assert isinstance(dh2, DataHammer)
         assert[None, None, None, 5, 6, 7] == ~dh2
 
     def test_copies(self):
-        original = list(dict(key="K%02d" % num, nums=tuple(lrange(num, num+10)),
-                             embed=dict(foo="%d-bar" % num, bar="foo-%d" % (num/5.0)),
-                             base=num, nmax=num+10) for num in lrange(100, 115, 3))
+        original = list(dict(key="K%02d" % num, nums=tuple(lrange(num, num + 10)),
+                             embed=dict(foo="%d-bar" % num, bar="foo-%d" % (num / 5.0)),
+                             base=num, nmax=num + 10) for num in lrange(100, 115, 3))
 
         logging.info("Original:%s", original)
         mutable = copy.deepcopy(original)
@@ -288,7 +300,7 @@ class TestDataHammer(object):
         def recurse(data, magic, crumbs, level=0):
             assert isinstance(magic, DataHammer)
             logging.info("Checking %s  <%s>.....\n--> %s\n==> %s",
-                         crumbs, tname(data), json.dumps(data), magic)
+                         crumbs, _tname(data), json.dumps(data), magic)
             assert level < 30
 
             contents = ~magic
@@ -298,16 +310,16 @@ class TestDataHammer(object):
             if isinstance(data, list):
                 for nth, item in enumerate(data):
                     logging.info("Checking %s[%s]: %s", crumbs, nth, item)
-                    recurse(item, DataHammer(magic[nth]), "{}[{}]".format(crumbs, nth), level+1)
+                    recurse(item, DataHammer(magic[nth]), "{}[{}]".format(crumbs, nth), level + 1)
 
             elif isinstance(data, dict):
                 for key, value in sorted(data.items()):
-                    logging.info("Checking<%s> key '%s'...", tname(value), key)
+                    logging.info("Checking<%s> key '%s'...", _tname(value), key)
                     if IDENTIFIER.match(key):
                         pull = eval("magic.%s" % key)
                     else:
                         pull = magic._get(key)
-                    recurse(value, pull, "{}[.{}]".format(crumbs, key), level+1)
+                    recurse(value, pull, "{}[.{}]".format(crumbs, key), level + 1)
 
         total = json.load(open_file('mrl.json'))
         magic = DataHammer(total)
@@ -776,9 +788,9 @@ class TestDataHammer(object):
                 return
             logging.info("=== FORMAT '%s' of %s", fmtstr, data)
             logging.info("=== Expect<%s>(%s): >>\n%s\n<<=========",
-                         tname(expect), hash(expect), expect.replace('\n', '\\n'))
+                         _tname(expect), hash(expect), expect.replace('\n', '\\n'))
             logging.info("=== Result<%s>(%s): >>\n%s\n<<=========",
-                         tname(result), hash(result), result.replace('\n', '\\n'))
+                         _tname(result), hash(result), result.replace('\n', '\\n'))
             assert result == expect
 
         handle("{}", fmt(data))
@@ -1143,13 +1155,24 @@ class TestDataHammer(object):
             data = json.load(fd)
 
         dh = DataHammer(data)
-        ag = dh._groupby(('age', 'name.last'),
-                         ('salary', 'location.state'))
-        print("groupby 1: {:-0j}\n".format(ag))
+        one = dh._groupby(('age', 'name.last'),
+                          ('salary', 'location.state'))
+        print("groupby 1a: {:-j}".format(one))
 
         with open_file('people-ag1.json.gz', gz=True) as fd:
             expect = json.load(fd)
-        assert expect == ~ag
+        assert expect == ~one
+
+        # Test handling of single strings and another combine arg.
+        def count(names):
+            return [dict(collections.Counter(names))]
+
+        two = dh._groupby('location.state', 'name.last', combine=count)
+        print("groupby 1b: {:-j}".format(two))
+
+        with open_file('people-ag1b.json.gz', gz=True) as fd:
+            expect = json.load(fd)
+        assert expect == ~two
 
     def test_groupby2(self):
         with open_file('people.json.gz', gz=True) as fd:
@@ -1163,7 +1186,7 @@ class TestDataHammer(object):
         ag = dh._groupby(('age', 'name.last'),
                          ('salary', 'location.state'),
                          combine=reductor)
-        print("groupby 2: {:-0j}\n".format(ag))
+        print("groupby 2: {:-j}".format(ag))
 
         with open_file('people-ag2.json.gz', gz=True) as fd:
             expect = json.load(fd)
@@ -1262,7 +1285,7 @@ class TestDataHammer(object):
 
     def test_mutator_index(self):
         index = (3, 5, 7)
-        data = [dict(a=i + 5, b=lrange(i*3, i*5), c=[dict(x=j) for j in (2, 4, 6)])
+        data = [dict(a=i + 5, b=lrange(i * 3, i * 5), c=[dict(x=j) for j in (2, 4, 6)])
                 for i in index]
         nada = [None for e in index]
         dump('data', data)
@@ -1345,7 +1368,7 @@ class TestDataHammer(object):
         assert data == ~magic
 
     def test_mutator_attr(self):
-        orig = [dict(c=[Obj(x=i), Obj(y=i * 2)], k=Obj(a=i, b=lrange(i*3)))
+        orig = [dict(c=[Obj(x=i), Obj(y=i * 2)], k=Obj(a=i, b=lrange(i * 3)))
                 for i in (3, 5, 7)]
 
         data = copy.deepcopy(orig)
