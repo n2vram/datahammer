@@ -9,6 +9,9 @@
 *.backup
 *.back
 
+# Releases
+dist/
+
 # Compiled objects, IDE junk:
 .idea
 __pycache__
