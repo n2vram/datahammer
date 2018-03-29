@@ -20,7 +20,7 @@ import sys
 from copy import deepcopy, copy
 from types import GeneratorType
 
-version = '0.9.4'
+version = '0.9.5'
 _STR_TYPES = (basestring,) if sys.version_info[0] == 2 else (str,)
 
 description = (

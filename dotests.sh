@@ -11,7 +11,5 @@ python2 -m pytest -vvv --cov-report=term-missing --cov=datahammer
 python3 -m pytest -vvv --cov-report=term-missing --cov=datahammer
 
 # Validate the README.rst file.  On Fedora "rst2html" is part of "python-docutils".
-for base in README EXAMPLES; do
-    rst2html --cloak-email-addresses --compact-lists --no-raw --smart-quotes=no \
-	 ${base}.rst > /tmp/${base}.html
-done
+rst2html --cloak-email-addresses --compact-lists --no-raw --smart-quotes=no \
+	 README.rst /tmp/README.html
