@@ -66,6 +66,16 @@ Details
   data in-place for some of the
   `Augmented Assignment statements <https://docs.python.org/3/reference/simple_stmts.html#grammar-token-augmented_assignment_stmt>`_.
 
+
+Build Status
+------------
+
+Current status:
+
+.. image:: https://travis-ci.org/n2vram/datahammer.svg?master
+    :alt: Build Status
+
+
 Known Issues
 ------------
 
