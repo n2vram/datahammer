@@ -64,7 +64,7 @@ class JEncoder(json.JSONEncoder):
     def jload(cls, arg, extra):
         if not isinstance(extra, dict):
             extra = {}
-        if isinstance(arg, _STR_TYPES):
+        if isinstance(arg, _STR_TYPES) or isinstance(arg, bytes):
             return json.loads(arg, **extra)
         if callable(getattr(arg, 'read', None)):
             return json.load(arg, **extra)

@@ -1152,15 +1152,15 @@ class TestDataHammer(object):
 
     def test_groupby1(self):
         with open_file('people.json.gz', gz=True) as fd:
-            data = json.load(fd)
+            dh = DataHammer(fd.read(), json=dict(encoding='utf-8'))
+        print("groupby 1: {:-j}".format(dh))
 
-        dh = DataHammer(data)
         one = dh._groupby(('age', 'name.last'),
                           ('salary', 'location.state'))
         print("groupby 1a: {:-j}".format(one))
 
         with open_file('people-ag1.json.gz', gz=True) as fd:
-            expect = json.load(fd)
+            expect = json.load(fd, encoding='utf-8')
         assert expect == ~one
 
         # Test handling of single strings and another combine arg.
@@ -1171,13 +1171,12 @@ class TestDataHammer(object):
         print("groupby 1b: {:-j}".format(two))
 
         with open_file('people-ag1b.json.gz', gz=True) as fd:
-            expect = json.load(fd)
+            expect = json.load(fd, encoding='utf-8')
         assert expect == ~two
 
     def test_groupby2(self):
         with open_file('people.json.gz', gz=True) as fd:
-            data = json.load(fd)
-        dh = DataHammer(data)
+            dh = DataHammer(fd.read(), json=dict(encoding='utf-8'))
 
         # Argument order matches that specifed to _groupby() as the 'value' names.
         def reductor(salary, state):
@@ -1189,7 +1188,7 @@ class TestDataHammer(object):
         print("groupby 2: {:-j}".format(ag))
 
         with open_file('people-ag2.json.gz', gz=True) as fd:
-            expect = json.load(fd)
+            expect = json.load(fd, encoding='utf-8')
         assert expect == ~ag
 
     def test_array_mods(self):
