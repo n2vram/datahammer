@@ -1150,17 +1150,20 @@ class TestDataHammer(object):
             dh = dh._flatten()
             assert expect == ~dh
 
+    @staticmethod
+    def read_json_gz(name, jdecode=True):
+        with open_file(name, gz=True) as fd:
+            text = fd.read().decode('utf-8')
+            return json.loads(text)
+
     def test_groupby1(self):
-        with open_file('people.json.gz', gz=True) as fd:
-            dh = DataHammer(fd.read().decode('utf-8'), json=True)
-        print("groupby 1: {:-j}".format(dh))
+        dh = DataHammer(self.read_json_gz('people.json.gz'))
 
         one = dh._groupby(('age', 'name.last'),
                           ('salary', 'location.state'))
         print("groupby 1a: {:-j}".format(one))
 
-        with open_file('people-ag1.json.gz', gz=True) as fd:
-            expect = json.load(fd, encoding='utf-8')
+        expect = self.read_json_gz('people-ag1.json.gz')
         assert expect == ~one
 
         # Test handling of single strings and another combine arg.
@@ -1170,14 +1173,11 @@ class TestDataHammer(object):
         two = dh._groupby('location.state', 'name.last', combine=count)
         print("groupby 1b: {:-j}".format(two))
 
-        with open_file('people-ag1b.json.gz', gz=True) as fd:
-            expect = json.load(fd, encoding='utf-8')
+        expect = self.read_json_gz('people-ag1b.json.gz')
         assert expect == ~two
 
     def test_groupby2(self):
-        with open_file('people.json.gz', gz=True) as fd:
-            dh = DataHammer(fd.read().decode('utf-8'), json=True)
-        print("groupby 2: {:-j}".format(dh))
+        dh = DataHammer(self.read_json_gz('people.json.gz'))
 
         # Argument order matches that specifed to _groupby() as the 'value' names.
         def reductor(salary, state):
@@ -1188,8 +1188,8 @@ class TestDataHammer(object):
                          combine=reductor)
         print("groupby 2: {:-j}".format(ag))
 
-        with open_file('people-ag2.json.gz', gz=True) as fd:
-            expect = json.load(fd, encoding='utf-8')
+        expect = self.read_json_gz('people-ag2.json.gz')
+        print("EXPECT: " + str(expect))
         assert expect == ~ag
 
     def test_array_mods(self):
