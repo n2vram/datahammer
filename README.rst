@@ -74,6 +74,7 @@ Current status:
 
 .. image:: https://travis-ci.org/n2vram/datahammer.svg?master
     :alt: Build Status
+    :target: https://travis-ci.org/n2vram/datahammer
 
 
 Known Issues
