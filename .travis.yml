@@ -14,5 +14,5 @@ install:
 
 script: 
 
-  - python -B -m pytest -vvv --cov-report=term-missing --cov=datahammer -s
+  - python -B -m pytest -vvv --cov-report=term-missing --cov=datahammer
   - python -B -m flake8 --max-line-length=120 *.py tests/*.py
