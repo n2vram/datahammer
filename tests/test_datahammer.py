@@ -1059,24 +1059,26 @@ class TestDataHammer(object):
 
     def test_toCSV(self):
         dh = DataHammer(self.PEEP_DATA)
-        expect = (
-            "\"last\",\"first\",\"nick\",\"age\",\"where\"",
+
+        # There is no guarantee that the order of named parameters is preserved.  Consequently, we use two named
+        # parameters and allow for both orders of the last 2 columns.  Ugh.
+        expect1 = (
+            "\"last\",\"first\",\"common\",\"years\",\"where\"",
             "\"O'herlihan\",\"Rex\",\"The Singing Cowboy\",28,\"The Range\"",
             "\"Frog\",\"Kermit \\\"the\\\"\",,75,\"The Swamp\"",
             "\"Scully\",\"Dana\",\"Starbuck\",25,\"Parts unknown\""
         )
+        expect2 = (
+            "\"last\",\"first\",\"common\",\"where\",\"years\"",
+            "\"O'herlihan\",\"Rex\",\"The Singing Cowboy\",\"The Range\",28",
+            "\"Frog\",\"Kermit \\\"the\\\"\",,\"The Swamp\",75",
+            "\"Scully\",\"Dana\",\"Starbuck\",\"Parts unknown\",25"
+        )
 
-        # Is there a guarantee that the order is preserved?
-        csv = dh._toCSV('name.last', 'name.first', nick='name.common',
-                        age='age', where='office.location')
+        csv = dh._toCSV('name.last', 'name.first', 'name.common',
+                        years='age', where='office.location')
         print("CSV = " + csv[2])
-        print("expect = " + expect[2])
-        for nth, row in enumerate(csv):
-            print("%d: %s" % (nth, row))
-            print("   " + expect[nth])
-        for n in range(len(expect)):
-            print("Row %d:\n  <<<%s>>>\n  <<<%s>>>" % (n, expect[n], csv[n]))
-        assert expect == csv
+        assert csv in (expect1, expect2)
 
     def test_tuples(self):
         names = ('name.last', 'name.first', 'name.common', 'age', 'office.location')
