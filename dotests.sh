@@ -4,6 +4,7 @@ cd "$(dirname "$0")"
 
 # From: 'pip install flake8'
 python2 -m flake8 --max-line-length=120 *.py tests/*.py
+python3 -m flake8 --max-line-length=120 *.py tests/*.py
 
 # Test with Python2.7+ and Python3.x
 export PYTHONPATH=$(dirname "$0"):${PYTHONPATH}

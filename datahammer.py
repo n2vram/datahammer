@@ -20,8 +20,8 @@ import sys
 from copy import deepcopy, copy
 from types import GeneratorType
 
-version = '0.9.5'
-_STR_TYPES = (basestring,) if sys.version_info[0] == 2 else (str,)
+version = '0.9.6'
+_STR_TYPES = (basestring,) if sys.version_info[0] == 2 else (str,)  # noqa: F821
 
 description = (
     'This module provides an easy way to manipulate and inspect lists of'
@@ -285,10 +285,6 @@ class DataHammer(object):
     def _int(self):
         # Function: int(OBJ) - new OBJ from [int(ITEM)]
         return self._apply(int)
-
-    def _long(self):
-        # Function: long(OBJ) - new OBJ from [long(ITEM)]
-        return self._apply(long)
 
     def _float(self):
         # Function: float(OBJ) - new OBJ from [float(ITEM)]

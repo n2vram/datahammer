@@ -8,7 +8,6 @@ import os
 import pytest
 import random
 import re
-import six
 import time
 
 from datahammer import DataHammer, _tname, JEncoder
@@ -520,8 +519,6 @@ class TestDataHammer(object):
             assert ~result == xdata
         handle(int, '_int')
         handle(float, '_float')
-        if six.PY2:
-            handle(long, '_long')
 
         xdata = [a * b for a, b in self.ZIPPED]
         result = amagic * bmagic
@@ -849,8 +846,6 @@ class TestDataHammer(object):
 
         assert [] == ~empty._int()
         assert [] == ~empty._float()
-        if six.PY2:
-            assert [] == ~empty._long()
 
         bmagic = DataHammer(self.BDATA)
         assert [] == ~(empty * bmagic)
@@ -962,8 +957,6 @@ class TestDataHammer(object):
         assert True == (data in magic)
 
         classes = {'_int': int, '_float': float, '_bool': bool}
-        if six.PY2:
-            classes['_long'] = long
 
         for name, cls in classes.items():
             expect = cls(data)

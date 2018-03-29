@@ -1,7 +1,7 @@
 datahammer
 ##########
 
-`Version 0.9.5`
+`Version 0.9.6`
 
 "When all you have is a hammer, everything looks like a nail." - *Anonymous*
 
@@ -79,6 +79,9 @@ Known Issues
 - There are missing operators that could be added. Among these are **del** (attribute or key),
   and the bitwise math operators.
 
+- The ``OBJ._long()`` method was removed in version 0.9.6, since it was complicating the code and testing,
+  and is identical to using: ``OBJ._apply(long)``  Apologies for the breakage, if you hit that.
+
 
 Construction
 ------------
@@ -146,7 +149,6 @@ This is a list of supported operations, including applying builtin Python functi
 | | ``OBJ._bool()``                        | Return a *DataHammer* instance with the results of applying   |
 | | ``OBJ._int()``                         | the builtin type (*of the same name w/o the underscore*) to   |
 | | ``OBJ._float()``                       | each item in the list.                                        |
-| | ``OBJ._long()``                        | *(Use of 'long' is only allowed for Python 2)*                |
 +------------------------------------------+---------------------------------------------------------------+
 | ``reversed(OBJ)``                        | Return a *DataHammer* instance with the contained data in     |
 |                                          | reversed order.                                               |
@@ -168,6 +170,8 @@ This is a list of supported operations, including applying builtin Python functi
 |                                          | *not ITEM* on each item.                                      |
 +------------------------------------------+---------------------------------------------------------------+
 
+NOTE: The ``OBJ._long()`` method was removed in version 0.9.6, since it was complicating the code and testing,
+and is identical to using: ``OBJ._apply(long)``
 
 Functions
 ---------
@@ -404,6 +408,8 @@ Releases
    +-------------+--------------------------------------------------------+
    |    0.9.5    | Moved EXAMPLES into (and reorganized) the README file. |
    |             | Configured for tests, coverage and style on Travis CI. |
+   +-------------+--------------------------------------------------------+
+   |    0.9.6    | Removed 'OBJ._long()' method, as it was Python2-only.  |
    +-------------+--------------------------------------------------------+
 
 
