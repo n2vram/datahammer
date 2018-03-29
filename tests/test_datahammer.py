@@ -1152,7 +1152,7 @@ class TestDataHammer(object):
 
     def test_groupby1(self):
         with open_file('people.json.gz', gz=True) as fd:
-            dh = DataHammer(fd.read(), json=dict(encoding='utf-8'))
+            dh = DataHammer(fd.read().decode('utf-8'), json=True)
         print("groupby 1: {:-j}".format(dh))
 
         one = dh._groupby(('age', 'name.last'),
@@ -1176,7 +1176,8 @@ class TestDataHammer(object):
 
     def test_groupby2(self):
         with open_file('people.json.gz', gz=True) as fd:
-            dh = DataHammer(fd.read(), json=dict(encoding='utf-8'))
+            dh = DataHammer(fd.read().decode('utf-8'), json=True)
+        print("groupby 2: {:-j}".format(dh))
 
         # Argument order matches that specifed to _groupby() as the 'value' names.
         def reductor(salary, state):
