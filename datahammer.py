@@ -21,7 +21,7 @@ import sys
 from copy import deepcopy, copy
 from types import GeneratorType
 
-version = '0.9.7'
+version = '0.9.8'
 _STR_TYPES = (basestring,) if sys.version_info[0] == 2 else (str,)  # noqa: F821
 
 description = (
@@ -183,6 +183,10 @@ class DataHammer(object):
     def _contains(self, arg):
         # Function:  - new OBJ from [ARG in ITEM]
         return self._apply(operator.contains, arg)
+
+    def _in(self, arg):
+        # Function:  - new OBJ from [ITEM in ARG]
+        return self._apply(lambda row: row in arg)
 
     #
     # Math / numeric methods.
@@ -611,6 +615,62 @@ class DataHammer(object):
 
         return DataHammer(data)
 
+    def _unique(self, keys, unique=1):
+        # Function: OBJ._unique(KEYS, UNIQUE=True)
+        """Return a new DataHammer instance after removing all items with duplicate (or unique)
+        values for the given 'keys'.
+
+        - `keys` is a tuple of strings, which are used to dereference items. May be `None` if
+          the values are scalars.
+        - `unique` controls handling of items with duplicate key values, the values mean:
+          0 = only those items are unique with their key values are kept, duplicates are dropped.
+          1 = Default: the first item with the given key values is kept, subsequent items with
+              the same key values will be dropped.
+          2 = All items that have duplicate key values are kept, unique ones are dropped.
+
+           In all cases the orginal order is preserved.
+
+        NOTES:
+        * The current implementation requires that every 'key' value value must be hashable
+          (or the full item if 'keys' is `None`).
+        """
+        if isinstance(keys, _STR_TYPES):
+            keys = (keys, )
+        if keys is not None and (
+                not isinstance(keys, (tuple, list)) or
+                not all(isinstance(k, _STR_TYPES) for k in keys)):
+            raise ValueError("'keys' must be a tuple of strings or `None`.")
+        if unique not in (0, 1, 2):
+            raise ValueError("'unique' must be 0, 1 or 2.")
+
+        # Find all keys and their location(s) in the items.
+        dups = set()
+        values = []
+        valset = set()
+        for nth, row in enumerate(self.__data):
+            vals = hash(row) if keys is None else tuple(self.__fetch(row, key) for key in keys)
+            if vals not in valset:
+                valset.add(vals)
+            else:
+                dups.add(vals)
+            values.append(vals)
+        # Iterate in order and keep the ones we want.
+        data = []
+        first = set()
+        for nth, vals in enumerate(values):
+            keep = False
+            if unique == 0 and vals not in dups:
+                keep = True
+            elif unique == 1 and vals not in first:
+                first.add(vals)
+                keep = True
+            elif unique == 2 and vals in dups:
+                keep = True
+            if keep:
+                data.append(self.__data[nth])
+
+        return DataHammer(data)
+
     def _flatten(self):
         # Function: OBJ._flatten()
         """Return a DataHammer instance with contained items that are the result of flattening
@@ -909,3 +969,5 @@ class DataHammer(object):
 
     def _mutate(self):
         return self.Mutator(self)
+
+# The End.

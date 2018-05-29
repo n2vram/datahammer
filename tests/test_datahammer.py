@@ -485,12 +485,20 @@ class TestDataHammer(object):
         assert modapp1 == modapp1
 
     def test_contains_reversed(self):
-        data = [(len(x), x) for x in "a bb c dd ee f ggg".split()]
+        words = "ape bee cat dog elk frog".split()
+        data = [(len(x), x) for x in words]
         magic = DataHammer(data)
         for item in data:
             dump("Item", item)
             assert item in magic
             assert magic._contains(item)
+
+        dwords = DataHammer(words)
+        for num, word in enumerate(words):
+            want = [(i == num) for i in range(len(words))]
+            dump("Want " + str(num), want)
+            assert want == ~dwords._in(["hippo", word, "zebra"])
+
         #
         # Whenver ITEM is in OBJ.__data, then:
         # 1. We expect  (ITEM in OBJ) == True  -- and it is.
@@ -854,6 +862,7 @@ class TestDataHammer(object):
 
         assert (None in empty) is False
         assert [] == ~(empty._contains(None))
+        assert [] == ~(empty._in([]))
 
         assert [] == ~empty._int()
         assert [] == ~empty._float()
@@ -1431,6 +1440,51 @@ class TestDataHammer(object):
             DataHammer(dict(a=5, b=12))._slice(0)
         with pytest.raises(AttributeError):
             DataHammer(dict(a=5, b=12))._insert(0, {})
+
+    def test_unique_data(self):
+        nums = [(i + 3) % 5 for i in range(7)]
+        dh0 = DataHammer(nums)
+
+        objs = [dict(nth=nth, val=val) for nth, val in enumerate(nums)]
+        dh1 = DataHammer(objs)
+
+        ind0 = (2, 3, 4)
+        ind1 = (0, 1, 2, 3, 4)
+        ind2 = (0, 1, 5, 6)
+
+        for unique, indices in enumerate((ind0, ind1, ind2)):
+            expect = [objs[i] for i in indices]
+            uniq1 = dh1._unique('val', unique=unique)
+            assert expect == ~uniq1
+            assert ~uniq1.val == ~dh0._unique(None, unique=unique)
+
+        # Default unique == 1.
+        expect = [objs[i] for i in ind1]
+        assert expect == ~dh1._unique('val')
+
+    def test_unique_errors(self):
+        dh = DataHammer(self.PEEP_DATA)
+        for keys in (100, set(), self, 1.125):
+            with pytest.raises(ValueError) as raised:
+                dh._unique(100)
+            assert "must be a tuple of strings" in str(raised.value)
+        for unique in (None, -1, "foo", self, 1.25):
+            with pytest.raises(ValueError) as raised:
+                dh._unique('val', unique=unique)
+            assert "must be 0, 1 or 2" in str(raised.value)
+        with pytest.raises(TypeError) as raised:
+            dh._unique('name')
+        assert "unhashable type: 'dict'" in str(raised.value)
+
+    def test_unique_files(self):
+        # Sort by name first, last. Note that we must has the first/last names not the dict.
+        with open_file('people.json', 'r') as fd:
+            dh = DataHammer(fd, json=True)
+        for num in (0, 1, 2):
+            with open_file('people-uniq%d.json' % num, 'r') as fd:
+                expect = DataHammer(fd, json=True)
+            result = ~dh._unique(('name.first', 'name.last'), unique=num)
+            assert ~expect == result
 
     def test_mutator_dict(self):
         magic = DataHammer(self.JOBS_DATA)

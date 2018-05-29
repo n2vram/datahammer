@@ -1,7 +1,7 @@
 datahammer
 ##########
 
-`Version 0.9.7`
+`Version 0.9.8`
 
 "When all you have is a hammer, everything looks like a nail." - *Anonymous*
 
@@ -92,6 +92,11 @@ Known Issues
 
 - The ``OBJ._long()`` method was removed in version 0.9.6, since it was complicating the code and testing,
   and is identical to using: ``OBJ._apply(long)``  Apologies for the breakage, if you hit that.
+
+- The ``OBJ._toCSV()`` method changed in version 0.9.7, since it wasn't using the builtin *csv* package,
+  and was using a backslash to escape double-quotes within the quoted text, rather than a pair of
+  consecutive double-quotes. For example, the previous output ``"Derrial \"Preacher\" Book"`` is now
+  output as ``"Derrial ""Preacher"" Book"``.
 
 
 Construction
@@ -200,6 +205,9 @@ This is a list of supported functions. [1]_
 | ``OBJ._contains(ARG)``                    | Return a *DataHammer* instance with the results of applying   |
 |                                           | *ARG in ITEM* for each item.                                  |
 +-------------------------------------------+---------------------------------------------------------------+
+| ``OBJ._in(ARG)``                          | Return a *DataHammer* instance with the results of applying   |
+|                                           | *ITEM in ARG* for each item.                                  |
++-------------------------------------------+---------------------------------------------------------------+
 | ``OBJ._apply(FUNC, ARG, *ARGS, **KWDS)``  | Return a *DataHammer* instance with the results of applying   |
 |                                           | ``FUNC(ITEM, ARG, *ARGS, **KWDS)`` to each item. [3]_         |
 +-------------------------------------------+---------------------------------------------------------------+
@@ -262,6 +270,13 @@ This is a list of supported functions. [1]_
 |                                           | corresponding to the `KEYS`.  The `FLAGS` parameter controls  |
 |                                           | specifics. Somewhat similar to the `SQL` **JOIN** operations. |
 |                                           | See `Joining`_ and the `Deeper Examples`_.                    |
++-------------------------------------------+---------------------------------------------------------------+
+| ``OBJ._unique(KEYS [,UNIQUE])``           | Return a *DataHammer* instance with items from this instance, |
+|                                           | based on the uniqueness of the values for `KEYS`.  The        |
+|                                           | `UNIQUE` parameter sets handling for items with duplicate key |
+|                                           | values.                                                       |
+|                                           |                                                               |
+|                                           | See `Unique`_ and the `Deeper Examples`_.                     |
 +-------------------------------------------+---------------------------------------------------------------+
 | ``OBJ._mutator()``                        | Returns a *DataHammer.Mutator* instance to be used for making |
 |                                           | modifications to the contained data.  See `Mutators`_.        |
@@ -423,6 +438,33 @@ Notes:
 
 
 
+Unique
+------------
+
+The **_unique()** method allows eliminating items based on the uniqueness / duplication of key values.
+
+Parameters are:
+
+- `KEYS` should be a list/tuple of strings which are used as a `SELECTOR` into each item.  The associated
+  values are used for the uniqueness test.  (If `KEYS` is a single string, it is handled as expected.)
+
+  There is a special case when `KEYS` is **None**: if so, the hash of the item is used in lieu of key values.
+  Obviously, all items must be hashable.
+
+- `UNIQUE` determines which items to keep, based on key values.  `UNIQUE` may be:
+
+  - 0 = Keep only those items that are unique, with no duplicates.
+  - 1 = Keep the first item with key values, ignore subsequent duplicates.
+  - 2 = Keep all instances of items that have duplicate key values.
+ 
+In each case, the order of the items is preserved from the original data.
+
+Note that with **unique = 2**, there will be multiple items that have the same key values; to remove those you filter
+them a second time with the same `KEYS`:
+
+    **OBJ._unique(KEYS, 2)._unique(KEYS)**
+
+
 Mutators
 --------
 
@@ -503,7 +545,9 @@ Releases
    +-------------+--------------------------------------------------------+
    |    0.9.6    | Removed 'OBJ._long()' method, as it was Python2-only.  |
    +-------------+--------------------------------------------------------+
-   |    0.9.7    | Added the 'OBJ._join()' method.                        |
+   |    0.9.7    | Added the 'OBJ._join()' and 'OBJ._fromCSV()' methods.  |
+   +-------------+--------------------------------------------------------+
+   |    0.9.8    | Added the 'OBJ._unique()' and 'OBJ._in()' methods.     |
    +-------------+--------------------------------------------------------+
 
 
@@ -863,11 +907,51 @@ are not trivial, so please read carefully so you can understand the functionalit
   (*Obviously, the outputs above were reformmated for clarity.*)
 
 
+10. There is a method for easily dealing with duplicate values on particular keys.
+    Once again the idea of *key values* is used to determine what is considered.
+
+    Note that if KEYS is a string, it is handled correctly.
+
+    .. code:: python
+
+      >>> dh = DataHammer(data)
+      >>> keys = 'location.city'
+      >>> Counter(dh.location.city)
+      Counter({'Baltimore': 2, 'Portland': 2, 'San Antonio': 2, 'Oklahoma ': 1, 'Jersey City': 1})
+
+      # Zero (0) gives only the unique items, where count was 1 -- all but "Mobile Developer".
+      >>> ~dh._unique(keys, 0).location.city
+      ['Oklahoma City', 'Jersey City']
+
+      # The default (one, 1) gives all key values, but only the first item with the value(s)
+      >>> ~dh._unique(keys).location.city
+      ['Baltimore', 'Portland', 'San Antonio', 'Oklahoma City', 'Jersey City']
+      >>> ~dh._unique(keys, 1).name
+      [{'first': 'Addison', 'last': 'Stewart'}, {'first': 'Jack', 'last': 'Young'},
+       {'first': 'Brianna', 'last': 'Lewis'}, {'first': 'Logan', 'last': 'Ward'},
+       {'first': 'Grace', 'last': 'Evans'}]
+
+      # Two (2) gives only those items that have a duplicate (of 'location.city').
+      >>> ~dh._unique(keys, 2)._pick('name', keys)
+      [{'name': {'first': 'Addison', 'last': 'Stewart'}, 'city': 'Baltimore'},
+       {'name': {'first': 'Katherine', 'last': 'Perry'}, 'city': 'Baltimore'},
+       {'name': {'first': 'Jack', 'last': 'Young'}, 'city': 'Portland'},
+       {'name': {'first': 'Brianna', 'last': 'Lewis'}, 'city': 'San Antonio'},
+       {'name': {'first': 'Logan', 'last': 'Martinez'}, 'city': 'Portland'},
+       {'name': {'first': 'Sophia', 'last': 'Moore'}, 'city': 'San Antonio'}]
+
+      # To get the unique set of duplicated values for a given set of keys, you can use a second
+      # pass, using the default (1) for `unique`.
+      >>> ~dh._unique(keys, 2)._unique(keys).location
+      [{'city': 'Baltimore', 'state': 'Maryland'},
+       {'city': 'Portland', 'state': 'Oregon'},
+       {'city': 'San Antonio', 'state': 'Texas'}]
+
 
 Formatting Specification
 ------------------------
 
-10. An extension is provided for formatting, using the **j** `type`.  Each item will be printed as JSON using
+11. An extension is provided for formatting, using the **j** `type`.  Each item will be printed as JSON using
     *json.dumps()*.  In particular, the only allowed parts to the *format_spec* are:
 
    a. A negative `sign` will cause a newline to be inserted between the item outputs.
@@ -895,7 +979,7 @@ Formatting Specification
 Warnings and Caveats
 --------------------
 
-11. Warning: To combine multiple instances with `bool` values you must use the `&` and `|`, and
+12. Warning: To combine multiple instances with `bool` values you must use the `&` and `|`, and
     *not* use `and` and `or` as you would with Python `bool` values.
 
  .. code:: python
@@ -919,7 +1003,7 @@ Warnings and Caveats
 Other Examples
 --------------
 
-12. Given a JSON file that has metadata separated from the data values, we can easily
+13. Given a JSON file that has metadata separated from the data values, we can easily
     combine these, and find the ones which match criteria we want.
 
   .. code:: python
@@ -938,9 +1022,9 @@ Other Examples
       >>> names = jobs.meta.view.columns.name
       >>> norm = DataHammer(dict(zip(names, row)) for row in jobs.data)
 
-      # Here 'norm' contains 840 items, each a dict with the same schema.
+      # Here 'norm' contains 1260 items, each a dict with the same schema.
       >>> len(norm)
-      840
+      1260
       >>> print(norm[0])
       {'sid': 1, 'id': 'A0447302-02D8-4EFD-AB68-777680645F02', 'position': 1,
        'created_at': 1437380960, 'created_meta': '707861', 'updated_at': 1437380960,
@@ -950,23 +1034,39 @@ Other Examples
 
       # Use collections.Counter to count the number of instances of values:
       >>> Counter(norm.Year)
-      Counter({'2012': 210, '2013': 210, '2014': 210, '2015': 210})
+      Counter({'2012': 210, '2013': 210, '2014': 210, '2015': 210, '2017': 210, '2016': 210})
       >>> Counter(norm._get('NAICS Code'))
-      Counter({'11': 40, '21': 40, '22': 40, '23': 40, '42': 40, '51': 40, '52': 40,
-               '53': 40, '54': 40, '55': 40, '56': 40, '61': 40, '62': 40, '71': 40,
-               '72': 40, '81': 40, '90': 40, '99': 40, '31-33': 30, '44-45': 30,
-               '48-49': 30, '31': 10, '44': 10, '48': 10})
+      Counter({'11': 60, '21': 60, '22': 60, '23': 60, '42': 60, '51': 60, '52': 60,
+               '53': 60, '54': 60, '55': 60, '56': 60, '61': 60, '62': 60, '71': 60,
+               '72': 60, '81': 60, '90': 60, '99': 60, '31-33': 30, '44-45': 30,
+               '48-49': 30, '31': 30, '44': 30, '48': 30})
 
-      # Use '&' to require both conditions.
-      >>> fish3 = norm[(norm.Year == '2013') & norm.Region._contains('Capital Region')]
-      >>> len(fish3)
+      # Use '&' to require both conditions, it is a row-wise `and` of the separate tests.
+      >>> cap2013 = norm[(norm.Year == '2013') & norm.Region._contains('Capital Region')]
+      >>> len(cap2013)
       21
       >>> keepers = norm.Jobs._int() > 500000
       >>> sum(keepers)
-      8
+      12
       >>> large = norm[keepers]
       >>> len(large)
-      8
+      12
+      >>> large[0]
+      {'sid': 121, 'id': '98A53A4E-712C-47A9-9106-C9062DB8CBBD', 'position': 121,
+       'created_at': 1437380961, 'created_meta': '707861', 'updated_at': 1437380961,
+       'updated_meta': '707861', 'meta': None, 'Year': '2012', 'Region': 'New York City',
+       'NAICS Code': '62', 'Industry': 'Health Care and Social Assistance', 'Jobs': '591686'}
+      >>> ~norm.Region._unique(None)
+      ['Capital Region', 'Central New York', 'Finger Lakes', 'Long Island', 'Mid-Hudson',
+       'New York City', 'North Country', 'Southern Tier ', 'Western New York ', 'Mohawk Valley',
+       'Southern Tier', 'Western New York']
+      >>> Counter(norm.Region)
+      Counter({'Capital Region': 126, 'Central New York': 126, 'Finger Lakes': 126,
+               'Long Island': 126, 'Mid-Hudson': 126, 'New York City': 126, 'North Country': 126,
+               'Mohawk Valley': 126, 'Southern Tier ': 63, 'Western New York ': 63,
+               'Southern Tier': 63, 'Western New York': 63})
+      >>> sum(norm.Region._in(['Mohawk Valley', 'Southern Tier']))
+      189
 
 
 SELECTOR Examples
@@ -981,10 +1081,10 @@ SELECTOR Examples
 .. code:: python
 
     >>> dh = DataHammer([
-    ...   {"a": 100, "b": {"b1": [101, 102, 103], "b2": "ape"}, "c": ["Apple", "Anise"]},
-    ...   {"a": 200, "b": {"b1": [201, 202, 203], "b2": "bat"}, "c": ["Banana", "Basil"]},
-    ...   {"a": 300, "b": {"b1": [301, 302, 303], "b2": "cat"}, "c": ["Cherry", "Cayenne"]}
-    ... ])
+          {"a": 100, "b": {"b1": [101, 102, 103], "b2": "ape"}, "c": ["Apple", "Anise"]},
+          {"a": 200, "b": {"b1": [201, 202, 203], "b2": "bat"}, "c": ["Banana", "Basil"]},
+          {"a": 300, "b": {"b1": [301, 302, 303], "b2": "cat"}, "c": ["Cherry", "Cayenne"]}
+        ])
   
     >>> ~dh._pick('a', 'b.b1', animal='b.b2', food='c', nil='this.is.missing')
     [{'a': 100, 'b1': [101, 102, 103], 'animal': 'ape', 'food': ['Apple', 'Anise'], 'nil': None},
@@ -1033,7 +1133,7 @@ anyone living, dead or undead is intended.
             "ranks":[180,190,111],"salary":8000,"title":"UX Designer"
         },
         {
-            "age":24,"gender":"M","location":{"city":"Oklahoma ","state":"Oklahoma"},
+            "age":24,"gender":"M","location":{"city":"Oklahoma City","state":"Oklahoma"},
             "name":{"first":"Logan","last":"Ward"},"phone":"734-410-1116",
             "ranks":[116,162],"salary":8000,"title":"Web Developer"
         },
