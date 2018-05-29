@@ -2,6 +2,7 @@ import collections
 import copy
 import datetime
 import gzip
+import itertools
 import json
 import logging
 import os
@@ -11,13 +12,23 @@ import re
 import time
 
 from datahammer import DataHammer, _tname, JEncoder
+DH = DataHammer
 
 logging.basicConfig(level=logging.DEBUG)
 
 
-def open_file(name, mode='r', gz=False):
+def open_file(name, mode='r'):
     path = os.path.join(os.path.dirname(__file__), 'files', name)
-    return gzip.GzipFile(path, mode) if gz else open(path, mode)
+    if 'r' in mode and not os.path.isfile(path):
+        path += '.gz'
+        return gzip.GzipFile(path, mode)
+    return open(path, mode)
+
+
+def read_json(name):
+    with open_file(name, 'r') as fd:
+        text = fd.read().decode('utf-8')
+        return json.loads(text)
 
 
 def lrange(*args):
@@ -1050,28 +1061,73 @@ class TestDataHammer(object):
         print("Res: %s" % ~dh)
         assert ["0"] == list(res[0].keys())
 
+    CSV1 = (
+        "\"last\",\"first\",\"common\",\"years\",\"where\"",
+        "\"O'herlihan\",\"Rex\",\"The Singing Cowboy\",28,\"The Range\"",
+        "\"Frog\",\"Kermit \"\"the\"\"\",\"\",75,\"The Swamp\"",
+        "\"Scully\",\"Dana\",\"Starbuck\",25,\"Parts unknown\""
+    )
+    CSV2 = (
+        "\"last\",\"first\",\"common\",\"where\",\"years\"",
+        "\"O'herlihan\",\"Rex\",\"The Singing Cowboy\",\"The Range\",28",
+        "\"Frog\",\"Kermit \"\"the\"\"\",\"\",\"The Swamp\",75",
+        "\"Scully\",\"Dana\",\"Starbuck\",\"Parts unknown\",25"
+    )
+
     def test_toCSV(self):
         dh = DataHammer(self.PEEP_DATA)
-
-        # There is no guarantee that the order of named parameters is preserved.  Consequently, we use two named
-        # parameters and allow for both orders of the last 2 columns.  Ugh.
-        expect1 = (
-            "\"last\",\"first\",\"common\",\"years\",\"where\"",
-            "\"O'herlihan\",\"Rex\",\"The Singing Cowboy\",28,\"The Range\"",
-            "\"Frog\",\"Kermit \\\"the\\\"\",,75,\"The Swamp\"",
-            "\"Scully\",\"Dana\",\"Starbuck\",25,\"Parts unknown\""
-        )
-        expect2 = (
-            "\"last\",\"first\",\"common\",\"where\",\"years\"",
-            "\"O'herlihan\",\"Rex\",\"The Singing Cowboy\",\"The Range\",28",
-            "\"Frog\",\"Kermit \\\"the\\\"\",,\"The Swamp\",75",
-            "\"Scully\",\"Dana\",\"Starbuck\",\"Parts unknown\",25"
-        )
-
+        # There is no guarantee that the order of named parameters is preserved.
+        # So, we must use two "expected" orders of the last 2 columns.  Ugh.
         csv = dh._toCSV('name.last', 'name.first', 'name.common',
                         years='age', where='office.location')
-        print("CSV = " + csv[2])
-        assert csv in (expect1, expect2)
+        print("GOT: \n" + "\n".join(csv))
+        assert csv in (self.CSV1, self.CSV2)
+
+    def test_fromCSV(self):
+        # Order of named parameters should not matter
+        dh1 = DataHammer._fromCSV("\n".join(self.CSV1))
+        dh2 = DataHammer._fromCSV("\r\n".join(self.CSV2) + "\r\n")
+        print("DH1= {:-j}".format(dh1))
+        print("DH2= {:-j}".format(dh2))
+        assert dh1 == dh2
+
+    def test_fromCSV2(self):
+        # Test use of 'read()' and a handler.
+        def one(e):
+            return dict(
+                name=dict(first=e['FirstName'], last=e['LastName']),
+                common=e['NickName'], where=e['Found'], years=e['Years'])
+
+        def two(e):
+            e['name'] = dict(first=e.pop('first'), last=e.pop('last'))
+            return e
+
+        with open_file('sample.csv') as fd1:
+            dh1 = DataHammer._fromCSV(fd1, sepr='\t', handler=one)
+        dh2 = DataHammer._fromCSV("\n".join(self.CSV1))._apply(two)
+        assert ~dh1 == ~dh2
+
+    def test_toFromCSV(self):
+        # Read the file, but drop the 'ranks' item.
+        def unrank(e):
+            e.pop('ranks')
+            return e
+
+        with open_file('people.json') as fd:
+            gold = DataHammer(fd, json=True)._apply(unrank)
+
+        # We 'flatten' to make a CSV', so we 'inflate' on read.
+        def inflate(e):
+            e['location'] = dict(city=e.pop('city'), state=e.pop('state'))
+            e['name'] = dict(first=e.pop('first'), last=e.pop('last'))
+            return e
+
+        csv = gold._toCSV('age', 'gender', 'salary', 'title', 'phone',
+                          city='location.city', state='location.state',
+                          first='name.first', last='name.last')
+        text = "\r\n".join(csv).replace(',', '\t') + "\r\n"
+        back = DataHammer._fromCSV(text, sepr='\t', handler=inflate)
+        assert ~gold == ~back
 
     def test_tuples(self):
         names = ('name.last', 'name.first', 'name.common', 'age', 'office.location')
@@ -1145,20 +1201,14 @@ class TestDataHammer(object):
             dh = dh._flatten()
             assert expect == ~dh
 
-    @staticmethod
-    def read_json_gz(name, jdecode=True):
-        with open_file(name, gz=True) as fd:
-            text = fd.read().decode('utf-8')
-            return json.loads(text)
-
     def test_groupby1(self):
-        dh = DataHammer(self.read_json_gz('people.json.gz'))
+        dh = DataHammer(read_json('people.json'))
 
         one = dh._groupby(('age', 'name.last'),
                           ('salary', 'location.state'))
         print("groupby 1a: {:-j}".format(one))
 
-        expect = self.read_json_gz('people-ag1.json.gz')
+        expect = read_json('people-ag1.json')
         assert expect == ~one
 
         # Test handling of single strings and another combine arg.
@@ -1168,11 +1218,11 @@ class TestDataHammer(object):
         two = dh._groupby('location.state', 'name.last', combine=count)
         print("groupby 1b: {:-j}".format(two))
 
-        expect = self.read_json_gz('people-ag1b.json.gz')
+        expect = read_json('people-ag1b.json')
         assert expect == ~two
 
     def test_groupby2(self):
-        dh = DataHammer(self.read_json_gz('people.json.gz'))
+        dh = DataHammer(read_json('people.json'))
 
         # Argument order matches that specifed to _groupby() as the 'value' names.
         def reductor(salary, state):
@@ -1183,9 +1233,160 @@ class TestDataHammer(object):
                          combine=reductor)
         print("groupby 2: {:-j}".format(ag))
 
-        expect = self.read_json_gz('people-ag2.json.gz')
+        expect = read_json('people-ag2.json')
         print("EXPECT: " + str(expect))
         assert expect == ~ag
+
+    def test_join_args(self):
+        dh = DataHammer(self.PEEP_DATA)
+        for keys in 125, [None], None, False, True, set(), {}:
+            with pytest.raises(TypeError) as raised:
+                dh._join(keys, dh)
+            dump('raised', raised)
+            assert str(raised.value).startswith("KEYS must be a list/tuple")
+
+        keys = ('aa', 'bb')
+        for other in 125, None, False, True, set(), {}:
+            with pytest.raises(TypeError) as raised:
+                dh._join(keys, other)
+            dump('raised', raised)
+            assert str(raised.value).startswith("OTHER must be a DataHammer")
+
+        other = DataHammer([])
+        for merge in 125, True, "blah", [100, 200]:
+            dump('merge', merge)
+            with pytest.raises(TypeError) as raised:
+                dh._join(keys, other, merge=merge)
+            dump('raised', raised)
+            assert str(raised.value).startswith("MERGE must be a callable")
+
+    def test_join1(self):
+        # Tests all eight flag settings with simple data.
+        ldata = [
+            {"aa": "A", "x": 1},
+            {"aa": "B", "x": 2},
+            {"aa": "C", "x": 3},
+            {"aa": "C", "x": 4}
+        ]
+        rdata = [
+            {"aa": "A", "y": 1},
+            {"aa": "A", "y": 2},
+            {"aa": "C", "y": 3},
+            {"aa": "D", "y": 4}
+        ]
+
+        expect_for = {
+            ('ORDERED', 'NEITHER'): [
+                {"aa": "A", "x": 1, "y": 1},
+                {"aa": "C", "x": 3, "y": 3}
+            ],
+            ('ORDERED', 'RIGHT'): [
+                {"aa": "A", "x": 1, "y": 1},
+                {"aa": "C", "x": 3, "y": 3},
+                {"aa": "A", "y": 2},
+                {"aa": "D", "y": 4}
+            ],
+            ('ORDERED', 'LEFT'): [
+                {"aa": "A", "x": 1, "y": 1},
+                {"aa": "B", "x": 2},
+                {"aa": "C", "x": 3, "y": 3},
+                {"aa": "C", "x": 4}
+            ],
+            ('ORDERED', 'BOTH'): [
+                {"aa": "A", "x": 1, "y": 1},
+                {"aa": "B", "x": 2},
+                {"aa": "C", "x": 3, "y": 3},
+                {"aa": "C", "x": 4},
+                {"aa": "A", "y": 2},
+                {"aa": "D", "y": 4}
+            ],
+            ('PRODUCT', 'NEITHER'): [
+                {"aa": "A", "x": 1, "y": 1},
+                {"aa": "A", "x": 1, "y": 2},
+                {"aa": "C", "x": 3, "y": 3},
+                {"aa": "C", "x": 4, "y": 3}
+            ],
+            ('PRODUCT', 'RIGHT'): [
+                {"aa": "A", "x": 1, "y": 1},
+                {"aa": "A", "x": 1, "y": 2},
+                {"aa": "C", "x": 3, "y": 3},
+                {"aa": "C", "x": 4, "y": 3},
+                {"aa": "D", "y": 4}
+            ],
+            ('PRODUCT', 'LEFT'): [
+                {"aa": "A", "x": 1, "y": 1},
+                {"aa": "A", "x": 1, "y": 2},
+                {"aa": "B", "x": 2},
+                {"aa": "C", "x": 3, "y": 3},
+                {"aa": "C", "x": 4, "y": 3}
+            ],
+            ('PRODUCT', 'BOTH'): [
+                {"aa": "A", "x": 1, "y": 1},
+                {"aa": "A", "x": 1, "y": 2},
+                {"aa": "B", "x": 2},
+                {"aa": "C", "x": 3, "y": 3},
+                {"aa": "C", "x": 4, "y": 3},
+                {"aa": "D", "y": 4}
+            ]
+        }
+
+        # Test default flag value and that the source objects aren't changed
+        left = DataHammer(copy.deepcopy(ldata))
+        right = DataHammer(copy.deepcopy(rdata))
+        result = left._join("aa", right)
+        expect = expect_for[('PRODUCT', 'NEITHER')]
+        assert expect == ~result
+        assert ldata == ~left
+        assert rdata == ~right
+
+        for (mode, keep), expect in expect_for.items():
+            mode = 'JOIN_' + mode
+            keep = 'JOIN_KEEP_' + keep
+            print("Joining ( %s, %s) ...", mode, keep)
+            mflag = getattr(DataHammer, mode)
+            kflag = getattr(DataHammer, keep)
+
+            # Also test that a single string works as a single key.
+            result = left._join("aa", right, flags=mflag + kflag)
+            assert expect == ~result
+
+    def test_join2(self):
+        modes = ('product', 'ordered')
+        keeps = ('neither', 'left', 'right', 'both')
+
+        with open_file('join-left.json') as fd:
+            left = DataHammer(fd, json=True)
+        with open_file('join-right.json') as fd:
+            right = DataHammer(fd, json=True)
+        name = ('name.last', 'name.first')
+
+        def _merge(left, right):
+            return dict(
+                name=left.get('name', {}).get('first') + "." + left.get('name', {}).get('last'),
+                city=left.get('location', {}).get('city'),
+                gender=left.get('gender'),
+                hand=right.get('hand'),
+                code=right.get('code', "insecure")
+            )
+
+        for (mode, keep) in itertools.product(modes, keeps):
+            fname1 = "join-%s-%s.json" % (mode, keep)
+            fname2 = "join-%s-%s.json" % (keep, mode)
+            mode = 'JOIN_' + mode.upper()
+            keep = 'JOIN_KEEP_' + keep.upper()
+            mflag = getattr(DataHammer, mode)
+            kflag = getattr(DataHammer, keep)
+
+            print("Read from: '%s'" % fname1)
+            flags = mflag + kflag
+            result = left._join(name, right, flags=flags)
+            expect = read_json(fname1)
+            assert expect == ~result
+
+            print("Read from: '%s'" % fname2)
+            other = right._join(name, left, flags=flags, merge=_merge)
+            expect = read_json(fname2)
+            assert expect == ~other
 
     def test_array_mods(self):
         dd = lrange(-3, 8)

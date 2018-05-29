@@ -13,6 +13,7 @@ output from parsing JSON.  It allows simple operations to be done on
 the items in parallel in a concise fashion.  Many features will also
 work on other data types.
 """
+import csv
 import json
 import operator
 import sys
@@ -20,7 +21,7 @@ import sys
 from copy import deepcopy, copy
 from types import GeneratorType
 
-version = '0.9.6'
+version = '0.9.7'
 _STR_TYPES = (basestring,) if sys.version_info[0] == 2 else (str,)  # noqa: F821
 
 description = (
@@ -68,6 +69,11 @@ class JEncoder(json.JSONEncoder):
             return json.loads(arg, **extra)
         if callable(getattr(arg, 'read', None)):
             return json.load(arg, **extra)
+
+
+class Object(object):
+    def __init__(self, **kwds):
+        self.__dict__.update(kwds)
 
 
 class DataHammer(object):
@@ -434,6 +440,8 @@ class DataHammer(object):
             data.append(out)
         return tuple(data)
 
+    _DECIPHER = {"true": True, "false": False, "null": None, "": ""}
+
     def _toCSV(self, *names, **pairs):
         # Function: OBJ._toCSV(CHOICES)
         """Return a tuple of lines in CSV format; parameters are similar to `_pick()`.
@@ -459,25 +467,78 @@ class DataHammer(object):
 
         This object is not changed."""
 
-        data = [",".join('"%s"' % e.split('.')[-1] for e in (list(names) + list(pairs.keys())))]
-        keys = list(names) + list(pairs.values())
+        parts = self.__freeze_names(names) + self.__freeze_names(pairs)
+        keys = tuple(k for k, v in parts)
+        indices = tuple(v for k, v in parts)
+
+        # Use an object with a 'write' method that appends to a list:
+        result = []
+        wrobj = Object(write=lambda row: result.append(row.rstrip()))
+        writer = csv.writer(wrobj, delimiter=',', quotechar='"', lineterminator='',
+                            quoting=csv.QUOTE_NONNUMERIC)
+        writer.writerow(keys)
         for row in self.__data:
             out = []
-            for col, key in enumerate(keys):
-                datum = self.__fetch(row, key)
-                if isinstance(datum, (int, float, bool)):
-                    text = json.dumps(datum)
-                elif datum in (None, ""):
-                    text = ""
-                else:
-                    text = json.dumps(str(datum))
-                out.append(text)
-            data.append(",".join(out))
-        return tuple(data)
+            for key in indices:
+                val = self.__fetch(row, key)
+                out.append(val)
+            writer.writerow(out)
+        return tuple(result)
+
+    @classmethod
+    def _fromCSV(cls, source, sepr=',', handler=None):
+        # Function: DataHammer._fromCSV(source, sepr=',')
+        """Return a DataHammer instance after parsing the lines of SOURCE as CSV format.
+
+        For example:
+          >>> osource = '''first,last,age
+          ... O'herlihan,Rex,28
+          ... Frog,Kermit the,75
+          ... Scully,Dana,25\n'''
+          >>> obj = DataHammer._fromCSV(source)
+          >>> csv = obj._toCSV('age', 'first', 'last')
+          >>> print("\n".join(csv))
+          "age","first","last"
+          28,"Rex","O'herlihan"
+          75,"Kermit the","Frog"
+          25,"Dana","Scully"
+
+        NOTE: The first row must be the member names.
+        """
+        if callable(getattr(source, 'read', None)):
+            source = source.read()
+
+        # Remove the trailing newline here, or split gives us a ghost line at the end.
+        if source.endswith('\n'):
+            source = source[:-1]
+        lines = source.replace('\r', '').split('\n')
+
+        def decipher(text):
+            if text in cls._DECIPHER:
+                return cls._DECIPHER[text]
+            for func in (int, float):
+                try:
+                    return func(text)
+                except ValueError:
+                    pass
+            return text
+
+        # For each remaining line, handle the shorter of keys and data.
+        reader = csv.reader(lines, delimiter=sepr)
+        keys = next(reader)
+        data = []
+        for row in reader:
+            item = {}
+            for key, value in zip(keys, row):
+                item[key] = decipher(value)
+            if handler:
+                item = handler(item)
+            data.append(item)
+        return DataHammer(data)
 
     def _groupby(self, group, values, combine=None):
         # Function: OBJ._groupby(GROUP, VALUES, COMBINE=None)
-        """Return a new DataHammer instance after aggregating the named VALUE(s) with similar KEY(s).
+        """Return a new DataHammer instance after aggregating the named value(s) with similar key(s).
         The items in the returned object will have keys from 'group' and from 'values'.
         The values will be a list unless 'combine' is specified.
 
@@ -567,6 +628,179 @@ class DataHammer(object):
             else:
                 data.append(item)
         return DataHammer(data)
+
+    # ==================================================================================================================
+    """
+    Join Operations.
+
+    NOTE: This is not all that complicated, but it is pretty hard to explain without diagrams.
+
+    Most of the complexity comes from (a) unmatched items and (b) multiple items that have the same key values. This
+    method allows choices for this.  Users that are familiar with SQL Joins will understand this issue.
+
+    HANDLING OF ITEMS WITH DUPLICATE KEY-VALUES
+
+       1. The JOIN_PRODUCT operations are similar to SQL joins.  The name comes from "Cartesian Product" - such that
+          the output contains every item from the left paired with every matching item from the right.  See Examples.
+
+       2. The JOIN_ORDERED simply pairs matching items from the left and the right, in the order they were found in the
+          input instances.
+
+    HANDING OF ITEMS WITH NO MATCHING ITEMS
+
+     Here, the INNER and OUTER join terminology is a remnant from SQL, the 'JOIN_KEEP_' flags are equivalent and
+     provided since they more explicit for users w/o an SQL background.  These can be summarized thus:
+
+       1. JOIN_KEEP_NEITHER, INNER_JOIN     = discard unmatched items from left and from the right.
+
+       2. JOIN_KEEP_LEFT, LEFT_OUTER_JOIN   = discard unmatched items from the right.
+
+       3. JOIN_KEEP_RIGHT, RIGHT_OUTER_JOIN = discard unmatched items from the left.
+
+       4. JOIN_KEEP_BOTH, FULL_OUTER_JOIN   = keep all unmatched items.
+
+    PLEASE: See the README for how to file an issue if this explanation isn't clear. I also hate it when project
+    documentation is insufficient, so I will do my best to clarify. """
+
+    # JOIN Constants
+
+    # These allow choosing between joining with the SQL-like (cartesian product) or in-order (1-by-1) methods
+    # for when there are multiple matching items.
+    JOIN_PRODUCT = 0x10
+    JOIN_ORDERED = 0x20
+
+    # These indicate how to handle unmatched items, and are used in conjunction with the above.
+    JOIN_KEEP_NEITHER = INNER_JOIN = 0
+    JOIN_KEEP_RIGHT = RIGHT_OUTER_JOIN = 1
+    JOIN_KEEP_LEFT = LEFT_OUTER_JOIN = 2
+    JOIN_KEEP_BOTH = FULL_OUTER_JOIN = 3
+
+    __JOIN_KEEP_MASK = 0x07
+    __JOIN_MODE_MASK = 0x30
+
+    @classmethod
+    def __decompose(self, data, keys):
+        # Used internally for join methods. Returns a Object instance with the attributes:
+        #  .ITEMS - dict[keyhash] = in-order list of items with those key-values
+        #  .KEYORD - list of key hashes, in order first encountered
+        #  .KEYIND - list of key hashes, in order of every times encountered
+
+        # VALUES is a map of the keyhash
+        items = {}
+        keyord = []
+        keyind = []
+        for item in data:
+            kval = tuple(self.__fetch(item, key) for key in keys)
+            keyhash = hash(kval)
+            if keyhash not in items:
+                items[keyhash] = [item]
+                keyord.append(keyhash)
+            else:
+                items[keyhash].append(item)
+            keyind.append(keyhash)
+        return Object(items=items, keyord=keyord, keyind=keyind)
+
+    @staticmethod
+    def __join_default_merge(left, right):
+        out = deepcopy(left)
+        out.update(deepcopy(right))
+        return out
+
+    def _join(self, keys, other, flags=None, merge=None):
+        # Function: OBJ._join(KEYS, OTHER, FLAGS, MERGE)
+        """Return a new DataHammer instance created by joining the items from this instance and another instance,
+        joining where the values from KEYS (a list/tuple of key names).
+
+        NOTES:
+        1. This object is not changed.
+
+        2. The current implementation requires that all 'key' values must be hashable.
+
+        3. The top-level items of both instances must be a dict, objects with attributes ARE NOT supported.
+
+        4. The 'flags' parameter should be the sum of two constants. This will dictate how unmatched and duplicate
+           key-value items are handled.  Defaults are indicated with '*':
+           a. JOIN_PRODUCT* or JOIN_ORDERED.
+           b. JOIN_KEEP_NEITHER*, JOIN_KEEP_LEFT, JOIN_KEEP_RIGHT or JOIN_KEEP_BOTH
+
+        5. If given, the 'merge' parameter should be a callable taking the parameters (LEFT, RIGHT) and returning
+           the desired item. The default is equivalent to the following, which overwrites any members in the left
+           that are also in the right.
+
+              def _merge(left, right, _ignored):
+                 out = copy.deepcopy(left)
+                 out.update(copy.deepcopy(right))
+                 return out
+
+        WARNING: If JOIN_PRODUCT is used with large inputs and many duplicates, this can be very slow and consume a
+        great deal of memory."""
+
+        if flags is None:
+            flags = (self.JOIN_PRODUCT + self.JOIN_KEEP_NEITHER)
+
+        if isinstance(keys, _STR_TYPES):
+            keys = (keys, )
+        elif not isinstance(keys, (list, tuple)) or not all(isinstance(key, _STR_TYPES) for key in keys):
+            raise TypeError("KEYS must be a list/tuple of strings")
+        if not isinstance(other, (list, tuple, DataHammer)):
+            raise TypeError("OTHER must be a DataHammer or list/tuple")
+        if merge and not callable(merge):
+            raise TypeError("MERGE must be a callable")
+        if merge is None:
+            merge = DataHammer.__join_default_merge
+
+        left = self.__decompose(self.__data, keys)
+        right = self.__decompose(other, keys)
+
+        keep = flags & self.__JOIN_KEEP_MASK
+        mode = flags & self.__JOIN_MODE_MASK
+
+        # These bits are orthogonal.
+        lkeep = bool(keep & self.__JOIN_KEEP_MASK & self.JOIN_KEEP_LEFT)
+        rkeep = bool(keep & self.__JOIN_KEEP_MASK & self.JOIN_KEEP_RIGHT)
+        combo = (mode & self.__JOIN_MODE_MASK) == self.JOIN_PRODUCT
+        result = []
+        rkeys = set(right.items)
+
+        for keyhash in left.keyind:
+            litem = left.items[keyhash].pop(0)
+
+            if combo:  # JOIN_PRODUCT
+                # Unmatched left items are kept as-is or not at all.
+                rlist = right.items.get(keyhash, None)
+                rkeys.discard(keyhash)
+
+                # Output a row for every right matching item.
+                if rlist:
+                    for ritem in rlist:
+                        result.append(merge(litem, ritem))
+
+                elif lkeep:
+                    result.append(deepcopy(litem))
+
+            else:  # JOIN_ORDERED
+                # Output a row a row with the first pair.
+                if keyhash in right.items:
+                    row = right.items[keyhash]
+                    if row:
+                        ritem = row.pop(0)
+                        if not row:
+                            # Remove the empty list so "not in" above will work.
+                            del right.items[keyhash]
+                        result.append(merge(litem, ritem))
+                elif lkeep:
+                    # Unmatched left items are kept as-is or not at all.
+                    result.append(deepcopy(litem))
+
+        # Add remaining unmatched items from right, if desired, in the order found.
+        if rkeep:
+            for keyhash in right.keyind:
+                if keyhash in rkeys:
+                    row = right.items.get(keyhash, [])
+                    for ritem in row:
+                        result.append(row.pop(0))
+
+        return DataHammer(result)
 
     @classmethod
     def __fetch(cls, item, keys):

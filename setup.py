@@ -34,6 +34,5 @@ setup(
     keywords=['data', 'datasets', 'queries', 'JSON', 'resultsets', 'datahammer', 'hammer'],
     py_modules=[name],
     download_url=(url + '/archive/' + datahammer.version),
-    install_requires=['six>=1.6.0'],
     platforms=['any'],
 )

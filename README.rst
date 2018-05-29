@@ -1,7 +1,7 @@
 datahammer
 ##########
 
-`Version 0.9.6`
+`Version 0.9.7`
 
 "When all you have is a hammer, everything looks like a nail." - *Anonymous*
 
@@ -189,77 +189,83 @@ Functions
 
 This is a list of supported functions. [1]_
 
-+------------------------------------------+---------------------------------------------------------------+
-|            **Function**                  |     **Description**                                           |
-+==========================================+===============================================================+
-| | ``OBJ._ind(name)``                     | Attribute, index or *dict* key dereference. [2]_              |
-| | ``OBJ._get(name)``                     |                                                               |
-+------------------------------------------+---------------------------------------------------------------+
-| ``str(OBJ)``                             | Returns a JSON dump of the contained data.                    |
-+------------------------------------------+---------------------------------------------------------------+
-| ``OBJ._contains(ARG)``                   | Return a *DataHammer* instance with the results of applying   |
-|                                          | *ARG in ITEM* for each item.                                  |
-+------------------------------------------+---------------------------------------------------------------+
-| ``OBJ._apply(FUNC, ARG, *ARGS, **KWDS)`` | Return a *DataHammer* instance with the results of applying   |
-|                                          | ``FUNC(ITEM, ARG, *ARGS, **KWDS)`` to each item. [3]_         |
-+------------------------------------------+---------------------------------------------------------------+
-| ``OBJ._strip(ARG)``                      | Return a *DataHammer* instance with only the desired items.   |
-|                                          | Based on the type of ARG given, the new instance has only the |
-|                                          | items for which the result is true of:                        |
-|                                          | 1. If ARG is not given:  *bool(ITEM)*                         |
-|                                          | 2. If ARG is a callable: *ARG(ITEM)*                          |
-|                                          | 3. If ARG is a list, tuple or set: *(ITEM in ARG)*            |
-|                                          | 4. Otherwise: *ITEM == ARG*                                   |
-+------------------------------------------+---------------------------------------------------------------+
-| ``OBJ._insert(INDEX, ITEM)``             | Return a *DataHammer* instance with ITEM inserted at INDEX.   |
-+------------------------------------------+---------------------------------------------------------------+
-| ``OBJ._extend(INDEX, ITEMS)``            | Return a *DataHammer* instance with ITEMS added at the end.   |
-+------------------------------------------+---------------------------------------------------------------+
-| ``OBJ._splice(INDEX, DELNUM, *ITEM)``    | Return a *DataHammer* instance with DELNUM items deleted at   |
-|                                          | INDEX, and with ITEM(s) inserted there. [5]_                  |
-+------------------------------------------+---------------------------------------------------------------+
-| ``OBJ._slice(START [, END [, STEP ] ])`` | Return a *DataHammer* instance with the list sliced according |
-|                                          | to the given indices (like *list* slicing works).             |
-+------------------------------------------+---------------------------------------------------------------+
-| ``OBJ._flatten()``                       | Return a *DataHammer* instance with contained items that are  |
-|                                          | the result of flattening *this* instance's contained items by |
-|                                          | one level. Sub-items are added in iteration-order for items   |
-|                                          | that are a *set*, *list* or *tuple* and for values from a     |
-|                                          | *dict*.                                                       |
-|                                          |                                                               |
-|                                          | Other types are not flattened, and are added as-is.           |
-+------------------------------------------+---------------------------------------------------------------+
-| ``OBJ._tuple(SELECTOR, SELECTOR, ...)``  | Return a tuple of results for each contained item, the result |
-|                                          | will be a tuple of values from the items, dereferenced by the |
-|                                          | *SELECTOR* parameters, in the same order. See [8]_            |
-|                                          |                                                               |
-|                                          | Only named *SELECTOR* parameters are allowed.                 |
-+------------------------------------------+---------------------------------------------------------------+
-| ``OBJ._toCSV(SELECTOR, SELECTOR, ...)``  | Return a tuple of `str` like a `Comma Separated Values` file, |
-|                                          | the first `str` represents the headers for each column, and   |
-|                                          | each subsequent contains a CSV-style representation of the    |
-|                                          | requested values from each item (which must be serializable). |
-|                                          | See [8]_                                                      |
-|                                          |                                                               |
-|                                          | Both positional and named *SELECTOR* parameters are allowed.  |
-+------------------------------------------+---------------------------------------------------------------+
-| ``OBJ._pick(SELECTOR, SELECTOR, ...)``   | Return a *DataHammer* instance of *dict* items made from one  |
-|                                          | or more sub-items specified by the *SELECTOR*, as either      |
-|                                          | positional or named parameters.                               |
-|                                          | Parameters dictate the keys in the resulting items. See [8]_  |
-|                                          |                                                               |
-|                                          | Both positional and named *SELECTOR* parameters are allowed.  |
-+------------------------------------------+---------------------------------------------------------------+
-| ``OBJ._groupby(GRP, VALS [, POST])``     | Return a *DataHammer* instance of *dict* items made by taking |
-|                                          | all sub-items specified by `VALS` and combine them with other |
-|                                          | items with the same `GRP` values.  It is similar to the `SQL` |
-|                                          | **GROUP BY** clause.  See [8]_ and [Grouping]_.               |
-|                                          |                                                               |
-|                                          | Both positional and named *SELECTOR* parameters are allowed.  |
-+------------------------------------------+---------------------------------------------------------------+
-| ``OBJ._mutator()``                       | Returns a *DataHammer.Mutator* instance to be used for making |
-|                                          | modifications to the contained data.  See `Mutators`_.        |
-+------------------------------------------+---------------------------------------------------------------+
++-------------------------------------------+---------------------------------------------------------------+
+|            **Function**                   |     **Description**                                           |
++===========================================+===============================================================+
+| | ``OBJ._ind(name)``                      | Attribute, index or *dict* key dereference. [2]_              |
+| | ``OBJ._get(name)``                      |                                                               |
++-------------------------------------------+---------------------------------------------------------------+
+| ``str(OBJ)``                              | Returns a JSON dump of the contained data.                    |
++-------------------------------------------+---------------------------------------------------------------+
+| ``OBJ._contains(ARG)``                    | Return a *DataHammer* instance with the results of applying   |
+|                                           | *ARG in ITEM* for each item.                                  |
++-------------------------------------------+---------------------------------------------------------------+
+| ``OBJ._apply(FUNC, ARG, *ARGS, **KWDS)``  | Return a *DataHammer* instance with the results of applying   |
+|                                           | ``FUNC(ITEM, ARG, *ARGS, **KWDS)`` to each item. [3]_         |
++-------------------------------------------+---------------------------------------------------------------+
+| ``OBJ._strip(ARG)``                       | Return a *DataHammer* instance with only the desired items.   |
+|                                           | Based on the type of ARG given, the new instance has only the |
+|                                           | items for which the result is true of:                        |
+|                                           | 1. If ARG is not given:  *bool(ITEM)*                         |
+|                                           | 2. If ARG is a callable: *ARG(ITEM)*                          |
+|                                           | 3. If ARG is a list, tuple or set: *(ITEM in ARG)*            |
+|                                           | 4. Otherwise: *ITEM == ARG*                                   |
++-------------------------------------------+---------------------------------------------------------------+
+| ``OBJ._insert(INDEX, ITEM)``              | Return a *DataHammer* instance with ITEM inserted at INDEX.   |
++-------------------------------------------+---------------------------------------------------------------+
+| ``OBJ._extend(INDEX, ITEMS)``             | Return a *DataHammer* instance with ITEMS added at the end.   |
++-------------------------------------------+---------------------------------------------------------------+
+| ``OBJ._splice(INDEX, DELNUM, *ITEM)``     | Return a *DataHammer* instance with DELNUM items deleted at   |
+|                                           | INDEX, and with ITEM(s) inserted there. [5]_                  |
++-------------------------------------------+---------------------------------------------------------------+
+| ``OBJ._slice(START [, END [, STEP ] ])``  | Return a *DataHammer* instance with the list sliced according |
+|                                           | to the given indices (like *list* slicing works).             |
++-------------------------------------------+---------------------------------------------------------------+
+| ``OBJ._flatten()``                        | Return a *DataHammer* instance with contained items that are  |
+|                                           | the result of flattening *this* instance's contained items by |
+|                                           | one level. Sub-items are added in iteration-order for items   |
+|                                           | that are a *set*, *list* or *tuple* and for values from a     |
+|                                           | *dict*.                                                       |
+|                                           |                                                               |
+|                                           | Other types are not flattened, and are added as-is.           |
++-------------------------------------------+---------------------------------------------------------------+
+| ``OBJ._tuple(SELECTOR, SELECTOR, ...)``   | Return a tuple of results for each contained item, the result |
+|                                           | will be a tuple of values from the items, dereferenced by the |
+|                                           | *SELECTOR* parameters, in the same order. See [8]_            |
+|                                           |                                                               |
+|                                           | Only named *SELECTOR* parameters are allowed.                 |
++-------------------------------------------+---------------------------------------------------------------+
+| ``OBJ._toCSV(SELECTOR, SELECTOR, ...)``   | Return a tuple of `str` like a `Comma Separated Values` file, |
+|                                           | the first `str` represents the headers for each column, and   |
+|                                           | each subsequent contains a CSV-style representation of the    |
+|                                           | requested values from each item (which must be serializable). |
+|                                           | See [8]_                                                      |
+|                                           |                                                               |
+|                                           | Both positional and named *SELECTOR* parameters are allowed.  |
++-------------------------------------------+---------------------------------------------------------------+
+| ``OBJ._pick(SELECTOR, SELECTOR, ...)``    | Return a *DataHammer* instance of *dict* items made from one  |
+|                                           | or more sub-items specified by the *SELECTOR*, as either      |
+|                                           | positional or named parameters.                               |
+|                                           | Parameters dictate the keys in the resulting items. See [8]_  |
+|                                           |                                                               |
+|                                           | Both positional and named *SELECTOR* parameters are allowed.  |
++-------------------------------------------+---------------------------------------------------------------+
+| ``OBJ._groupby(GRP, VALS [, POST])``      | Return a *DataHammer* instance of *dict* items made by taking |
+|                                           | all sub-items specified by `VALS` and combine them with other |
+|                                           | items with the same `GRP` values.  It is similar to the `SQL` |
+|                                           | **GROUP BY** clause.  See [8]_ and `Grouping`_.               |
+|                                           |                                                               |
+|                                           | Both positional and named *SELECTOR* parameters are allowed.  |
++-------------------------------------------+---------------------------------------------------------------+
+| ``OBJ._join(KEYS, OBJ [,FLAGS][,MERGE])`` | Return a *DataHammer* instance of *dict* items from merging   |
+|                                           | items from this instance and **OBJ**, joining on the values   |
+|                                           | corresponding to the `KEYS`.  The `FLAGS` parameter controls  |
+|                                           | specifics. Somewhat similar to the `SQL` **JOIN** operations. |
+|                                           | See `Joining`_ and the `Deeper Examples`_.                    |
++-------------------------------------------+---------------------------------------------------------------+
+| ``OBJ._mutator()``                        | Returns a *DataHammer.Mutator* instance to be used for making |
+|                                           | modifications to the contained data.  See `Mutators`_.        |
++-------------------------------------------+---------------------------------------------------------------+
 
 
 Indexing
@@ -342,6 +348,81 @@ of `GROUP` keys in the source items.  And the order of the list of values for ea
 as the order that those occurred in the source items.
 
 
+Joining
+-------
+
+There is a method for joining two *DataHammer* instances, combining items for which the specified key values match,
+this is partly inspired by the **JOIN** feature of SQL (`JOIN_PRODUCT`), and partly inspired by a use case where
+one-to-one matches were needed.
+
+With the two (2) flags [`JOIN_PRODUCT` or `JOIN_ORDERED`] for handling duplicates and the four (4) flags
+[`JOIN_KEEP_NEITHER`, `JOIN_KEEP_LEFT`, `JOIN_KEEP_RIGHT` or `JOIN_KEEP_BOTH`] for handling unmatched items, there
+are eight (8) different `flags` combinations.
+
+**HANDLING OF ITEMS WITH DUPLICATE KEY VALUES**
+
+Here, "duplicate" key-values means that a set of key-values occurs more than once in the same instance.
+
++-------------------+--------------------------------------------------------------------------------------+
+|  "Mode" Flag Name |   Description                                                                        |
++-------------------+--------------------------------------------------------------------------------------+
+| `JOIN_PRODUCT`    | Results are somewhat similar to SQL joins.  The name comes from the "Cartesian       |
+|                   | Product" since the output contains an item produced from the each matching item the  |
+|                   | left input and the right input.                                                      |
++-------------------+--------------------------------------------------------------------------------------+
+| `JOIN_ORDERED`    | This pairs matching items from the left and the right, one-by-one.  Pairing is in    |
+|                   | the same order as they were found in the input instances, and matching stops after   |
+|                   | exhausting the matching items in either the right input or left input.               |
++-------------------+--------------------------------------------------------------------------------------+
+
+If there are no duplicate entries in either input, then these modes function identically.
+
+
+**HANDING OF UNMATCHED ITEMS**
+
+An "unmatched" item is one whose key-values never occur in the items from the other instance.
+
+Here, the INNER and OUTER join terminology is a remnant from SQL, the "KEEP" flags are equivalent and provided
+since they describe the intended action.  These can be summarized thus:
+
++----------------------+--------------------+-----------------------------------------------------------------+
+|  "Keep" Flag Name    | Inner/Outer Name   |   Deescription                                                  |
++----------------------+--------------------+-----------------------------------------------------------------+
+| `JOIN_KEEP_NEITHER`  | `INNER_JOIN`       | Discard unmatched items from left and from the right.           |
++----------------------+--------------------+-----------------------------------------------------------------+
+| `JOIN_KEEP_LEFT`     | `LEFT_OUTER_JOIN`  | Discard unmatched items from the right.                         |
++----------------------+--------------------+-----------------------------------------------------------------+
+| `JOIN_KEEP_RIGHT`    | `RIGHT_OUTER_JOIN` | Discard unmatched items from the left.                          |
++----------------------+--------------------+-----------------------------------------------------------------+
+| `JOIN_KEEP_BOTH`     | `FULL_OUTER_JOIN`  | Keep unmatched items from the left and from the right.          |
++----------------------+--------------------+-----------------------------------------------------------------+
+
+**OUTPUT ORDER**
+
+The order of items in the inputs dictates the order in the output.  The algorithm simply iterates over the left
+input, producing zero or more outputs depending on the flags and presence of any matching items in the right input.
+It then appends unmatched items from the right, if desired.
+
+See the examples, or use it for yourself, if this is not sufficiently clear.
+
+Notes:
+
+  - With `JOIN_PRODUCT`, each matched item from the left will be paired with every matching item from the right, in
+    the order that the right items occurred.
+
+  - With `JOIN_ORDERED`, each item in the left will be paired with the corresponding order of the matching items in
+    the right input.  After the items from the right are exhausted, the remaining items from the left input with that
+    set of key-values are considered unmatched.  In addition, any items from the right input that are not consumed in
+    this way are also considered unmatched.
+
+  - With `JOIN_KEEP_LEFT` or `JOIN_KEEP_BOTH`, unmatched items from the left input will appear in the same order as
+    they are found in the left input.
+
+  - With `JOIN_KEEP_RIGHT` or `JOIN_KEEP_BOTH`, unmatched items from the right input will appear after all items
+    produced from items in the left input.  They will be in the same order as they occurred the right input.
+
+
+
 Mutators
 --------
 
@@ -421,6 +502,8 @@ Releases
    |             | Configured for tests, coverage and style on Travis CI. |
    +-------------+--------------------------------------------------------+
    |    0.9.6    | Removed 'OBJ._long()' method, as it was Python2-only.  |
+   +-------------+--------------------------------------------------------+
+   |    0.9.7    | Added the 'OBJ._join()' method.                        |
    +-------------+--------------------------------------------------------+
 
 
@@ -584,9 +667,16 @@ Simple Examples
     ['Stewart', 'Martinez', 'Lewis', 'Ward']
    
 
-8. There are methods for extracting parts of each item, including *_pick()*, *_tuples()* and *_toCSV()*. In addition,
+Deeper Examples
+---------------
+
+These demonstrate the extracting and manipulating power of *DataHammer* instances.  Note that these examples and notes
+are not trivial, so please read carefully so you can understand the functionality as it is designed.
+
+
+8. There are methods for extracting parts of each item, including *_pick()*, *_tuples()* and *_toCSV()*. In addition
    the *_groupby()* method allows extracting only certain parts `and` combining them across the items that share
-   certain values, similar to the **GROUP BY** syntax in SQL.
+   certain values, similar to the **GROUP BY** syntax in SQL. 
 
    See the main README section for detailed *SELECTOR Syntax*, but the methods are demonstrated here:
 
@@ -677,12 +767,108 @@ Simple Examples
          {'gender': 'M', 'age': (24, 60), 'salary': (8000, 33700)}]
 
 
+9. There is a method for joining two *DataHammer* instances, combining items for which the specified
+   key values match.  The `JOIN_PRODUCT` mode is inspired by the **JOIN** feature of SQL, whiel
+   `JOIN_ORDERED` was inspired by a use case where one-to-one matches were needed.
+
+    .. code:: python
+
+      >>> left = DataHammer([{"k": "A", "x": 1}, {"k": "B", "x": 2}, {"k": "C", "x": 3},
+      ...     {"k": "C", "x": 4}, {"k": "D", "x": 5}])
+      >>> right = DataHammer([{"k": "A", "y": 1}, {"k": "A", "y": 2}, {"k": "C", "y": 3},
+      ...     {"k": "C", "y": 4}, {"k": "E", "y": 5}])
+
+      # For JOIN_PRODUCT, each matched item from the left is paired with each the corresponding item
+      # from the right.  Then the JOIN_KEEP_{...} flag determines unmatched item retention.
+
+      # Default is ORDERED + NEITHER
+      >>> ~left._join("k", right)
+      [{'k': 'A', 'x': 1, 'y': 1},
+       {'k': 'A', 'x': 1, 'y': 2},
+       {'k': 'C', 'x': 3, 'y': 3},
+       {'k': 'C', 'x': 3, 'y': 4},
+       {'k': 'C', 'x': 4, 'y': 3},
+       {'k': 'C', 'x': 4, 'y': 4}]
+
+      >>> ~left._join("k", right, flags=DataHammer.JOIN_PRODUCT + DataHammer.JOIN_KEEP_NEITHER)
+      [{'k': 'A', 'x': 1, 'y': 1},
+       {'k': 'A', 'x': 1, 'y': 2},
+       {'k': 'C', 'x': 3, 'y': 3},
+       {'k': 'C', 'x': 3, 'y': 4},
+       {'k': 'C', 'x': 4, 'y': 3},
+       {'k': 'C', 'x': 4, 'y': 4}]
+
+      >>> ~left._join("k", right, flags=DataHammer.JOIN_PRODUCT + DataHammer.JOIN_KEEP_RIGHT)
+      [{'k': 'A', 'x': 1, 'y': 1},
+       {'k': 'A', 'x': 1, 'y': 2},
+       {'k': 'C', 'x': 3, 'y': 3},
+       {'k': 'C', 'x': 3, 'y': 4},
+       {'k': 'C', 'x': 4, 'y': 3},
+       {'k': 'C', 'x': 4, 'y': 4},
+       {'k': 'E', 'y': 5}]
+
+      >>> ~left._join("k", right, flags=DataHammer.JOIN_PRODUCT + DataHammer.JOIN_KEEP_LEFT)
+      [{'k': 'A', 'x': 1, 'y': 1},
+       {'k': 'A', 'x': 1, 'y': 2},
+       {'k': 'B', 'x': 2},
+       {'k': 'C', 'x': 3, 'y': 3},
+       {'k': 'C', 'x': 3, 'y': 4},
+       {'k': 'C', 'x': 4, 'y': 3},
+       {'k': 'C', 'x': 4, 'y': 4},
+       {'k': 'D', 'x': 5}]
+
+      >>> ~left._join("k", right, flags=DataHammer.JOIN_PRODUCT + DataHammer.JOIN_KEEP_BOTH)
+      [{'k': 'A', 'x': 1, 'y': 1},
+       {'k': 'A', 'x': 1, 'y': 2},
+       {'k': 'B', 'x': 2},
+       {'k': 'C', 'x': 3, 'y': 3},
+       {'k': 'C', 'x': 3, 'y': 4},
+       {'k': 'C', 'x': 4, 'y': 3},
+       {'k': 'C', 'x': 4, 'y': 4},
+       {'k': 'D', 'x': 5},
+       {'k': 'E', 'y': 5}]
+
+      # For JOIN_ORDERED, matched items from the left and right are paired, one-by-one, but only as
+      # until either side is exhausted, the remaining items are 'unmatched' and the JOIN_KEEP_{...}
+      # flag determines unmatched item retention.
+
+      >>> ~left._join("k", right, flags=DataHammer.JOIN_ORDERED + DataHammer.JOIN_KEEP_NEITHER)
+      [{'k': 'A', 'x': 1, 'y': 1},
+       {'k': 'C', 'x': 3, 'y': 3},
+       {'k': 'C', 'x': 4, 'y': 4}]
+
+      >>> ~left._join("k", right, flags=DataHammer.JOIN_ORDERED + DataHammer.JOIN_KEEP_RIGHT)
+      [{'k': 'A', 'x': 1, 'y': 1},
+       {'k': 'C', 'x': 3, 'y': 3},
+       {'k': 'C', 'x': 4, 'y': 4},
+       {'k': 'A', 'y': 2},
+       {'k': 'E', 'y': 5}]
+
+      >>> ~left._join("k", right, flags=DataHammer.JOIN_ORDERED + DataHammer.JOIN_KEEP_LEFT)
+      [{'k': 'A', 'x': 1, 'y': 1},
+       {'k': 'B', 'x': 2},
+       {'k': 'C', 'x': 3, 'y': 3},
+       {'k': 'C', 'x': 4, 'y': 4},
+       {'k': 'D', 'x': 5}]
+
+      >>> ~left._join("k", right, flags=DataHammer.JOIN_ORDERED + DataHammer.JOIN_KEEP_BOTH)
+      [{'k': 'A', 'x': 1, 'y': 1},
+       {'k': 'B', 'x': 2},
+       {'k': 'C', 'x': 3, 'y': 3},
+       {'k': 'C', 'x': 4, 'y': 4},
+       {'k': 'D', 'x': 5},
+       {'k': 'A', 'y': 2},
+       {'k': 'E', 'y': 5}]
+
+  (*Obviously, the outputs above were reformmated for clarity.*)
+
+
 
 Formatting Specification
 ------------------------
 
-9. An extension is provided for formatting, using the **j** `type`.  Each item will be printed as JSON using
-   *json.dumps()*.  In particular, the only allowed parts to the *format_spec* are:
+10. An extension is provided for formatting, using the **j** `type`.  Each item will be printed as JSON using
+    *json.dumps()*.  In particular, the only allowed parts to the *format_spec* are:
 
    a. A negative `sign` will cause a newline to be inserted between the item outputs.
    b. A non-zero `width` causes the item JSON is used as the indent within the item output
@@ -709,7 +895,7 @@ Formatting Specification
 Warnings and Caveats
 --------------------
 
-10. Warning: To combine multiple instances with `bool` values you must use the `&` and `|`, and
+11. Warning: To combine multiple instances with `bool` values you must use the `&` and `|`, and
     *not* use `and` and `or` as you would with Python `bool` values.
 
  .. code:: python
@@ -733,7 +919,7 @@ Warnings and Caveats
 Other Examples
 --------------
 
-11. Given a JSON file that has metadata separated from the data values, we can easily
+12. Given a JSON file that has metadata separated from the data values, we can easily
     combine these, and find the ones which match criteria we want.
 
   .. code:: python
