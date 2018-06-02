@@ -1122,8 +1122,7 @@ class TestDataHammer(object):
             e.pop('ranks')
             return e
 
-        with open_file('people.json') as fd:
-            gold = DataHammer(fd, json=True)._apply(unrank)
+        gold = DataHammer(read_json('people.json'))._apply(unrank)
 
         # We 'flatten' to make a CSV', so we 'inflate' on read.
         def inflate(e):
@@ -1363,10 +1362,8 @@ class TestDataHammer(object):
         modes = ('product', 'ordered')
         keeps = ('neither', 'left', 'right', 'both')
 
-        with open_file('join-left.json') as fd:
-            left = DataHammer(fd, json=True)
-        with open_file('join-right.json') as fd:
-            right = DataHammer(fd, json=True)
+        left = DataHammer(read_json('join-left.json'))
+        right = DataHammer(read_json('join-right.json'))
         name = ('name.last', 'name.first')
 
         def _merge(left, right):
@@ -1478,11 +1475,9 @@ class TestDataHammer(object):
 
     def test_unique_files(self):
         # Sort by name first, last. Note that we must has the first/last names not the dict.
-        with open_file('people.json', 'r') as fd:
-            dh = DataHammer(fd, json=True)
+        dh = DataHammer(read_json('people.json'))
         for num in (0, 1, 2):
-            with open_file('people-uniq%d.json' % num, 'r') as fd:
-                expect = DataHammer(fd, json=True)
+            expect = DataHammer(read_json('people-uniq%d.json' % num))
             result = ~dh._unique(('name.first', 'name.last'), unique=num)
             assert ~expect == result
 
