@@ -72,9 +72,9 @@ Build Status
 
 Current status:
 
-.. image:: https://travis-ci.org/n2vram/datahammer.svg?master
+.. image:: https://gitlab.com/n2vram/test-ci/badges/master/build.svg?rev=master
     :alt: Build Status
-    :target: https://travis-ci.org/n2vram/datahammer
+    :target: https://gitlab.com/n2vram/datahammer/pipelines
 
 
 Known Issues
