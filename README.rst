@@ -1,7 +1,7 @@
 datahammer
 ##########
 
-`Version 0.9.8`
+`Version 1.0`
 
 "When all you have is a hammer, everything looks like a nail." - *Anonymous*
 
@@ -522,7 +522,7 @@ Or for a specific version of Python:
 
 To the source git repository, use:
 
-  `git clone https://github.com/n2vram/datahammer.git`
+  `git clone https://gitlab.com/n2vram/datahammer.git`
 
 
 
@@ -549,6 +549,8 @@ Releases
    +-------------+--------------------------------------------------------+
    |    0.9.8    | Added the 'OBJ._unique()' and 'OBJ._in()' methods.     |
    +-------------+--------------------------------------------------------+
+   |     1.0     | Moved to gitlab.com, including GitLab-CI.              |
+   +-------------+--------------------------------------------------------+
 
 
 Reporting Issues, Contributing
@@ -557,12 +559,12 @@ Reporting Issues, Contributing
 As an open source project, *DataHammer* welcomes contributions and feedback.
 
 1. Report any issues, including with the functionality or with the documentation
-   via the GitHub project: https://github.com/n2vram/datahammer/issues
+   via the GitHub project: https://gitlab.com/n2vram/datahammer/issues
 
 2. To contribute to the source code, please use a GitHub pull request for the
    project, making sure to include full/extensive unit tests for any changes.  Note
    that if you cannot create a PR, then open an issue and attach a `diff` output
-   there. https://github.com/n2vram/datahammer/
+   there. https://gitlab.com/n2vram/datahammer/
 
 3. To translate the documentation, please follow the same process as for source
    code contributions.

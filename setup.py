@@ -5,7 +5,7 @@ from distutils.core import setup
 import datahammer
 
 name = 'datahammer'
-url = 'https://github.com/n2vram/' + name
+url = 'https://gitlab.com/n2vram/' + name
 
 hammer_classifiers = [
     'Development Status :: 5 - Production/Stable',
