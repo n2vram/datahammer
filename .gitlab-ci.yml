@@ -1,0 +1,16 @@
+
+test2.7:
+    image: python:2.7
+    script:
+      - python -c 'import sys;print(sys.version_info)'
+      - python -m pip install flake8 pytest pytest-cov six
+      - python -B -m pytest -vvv --cov-report=term-missing --cov=datahammer
+      - python -B -m flake8 --max-line-length=120 *.py tests/*.py
+
+test3.3:
+    image: python:3.3
+    script:
+      - python -c 'import sys;print(sys.version_info)'
+      - python -m pip install flake8 pytest pytest-cov six
+      - python -B -m pytest -vvv --cov-report=term-missing --cov=datahammer
+      - python -B -m flake8 --max-line-length=120 *.py tests/*.py
