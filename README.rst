@@ -1,7 +1,7 @@
 datahammer
 ##########
 
-`Version 1.0`
+`Version 1.0.1`
 
 "When all you have is a hammer, everything looks like a nail." - *Anonymous*
 
@@ -551,6 +551,8 @@ Releases
    +-------------+--------------------------------------------------------+
    |     1.0     | Moved to gitlab.com, including GitLab-CI.              |
    +-------------+--------------------------------------------------------+
+   |    1.0.1    | Minor changes post move to GitLab.                     |
+   +-------------+--------------------------------------------------------+
 
 
 Reporting Issues, Contributing
@@ -559,9 +561,9 @@ Reporting Issues, Contributing
 As an open source project, *DataHammer* welcomes contributions and feedback.
 
 1. Report any issues, including with the functionality or with the documentation
-   via the GitHub project: https://gitlab.com/n2vram/datahammer/issues
+   via the GitLab project: https://gitlab.com/n2vram/datahammer/issues
 
-2. To contribute to the source code, please use a GitHub pull request for the
+2. To contribute to the source code, please use a GitLab pull request for the
    project, making sure to include full/extensive unit tests for any changes.  Note
    that if you cannot create a PR, then open an issue and attach a `diff` output
    there. https://gitlab.com/n2vram/datahammer/
