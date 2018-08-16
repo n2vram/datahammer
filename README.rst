@@ -1,7 +1,7 @@
 datahammer
 ##########
 
-`Version 1.0.1`
+`Version 1.0.2`
 
 "When all you have is a hammer, everything looks like a nail." - *Anonymous*
 
