@@ -7,10 +7,8 @@ datahammer
 
 ----------
 
-*Note that although the version is not yet at 1.0 the code is production-ready.*
+*Note that although the version is barely past 1.0, the code* is *production-ready.*
 *It has 100% unit test coverage, is extensively document and has considerable examples.*
-*The lower version is soley due to concern with the clarity of this documentation.*
-
 
 **TL;DR:** Too anxious to see just what *DataHammer* can do? Check out the `DataHammer Examples`_.
 
@@ -552,6 +550,8 @@ Releases
    |     1.0     | Moved to gitlab.com, including GitLab-CI.              |
    +-------------+--------------------------------------------------------+
    |    1.0.1    | Minor changes post move to GitLab.                     |
+   +-------------+--------------------------------------------------------+
+   |    1.0.2    | Final changes before pushing to PyPi.                  |
    +-------------+--------------------------------------------------------+
 
 
